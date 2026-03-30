@@ -1,0 +1,27 @@
+# Ralph / project config
+.ralph/
+.envrc
+.ralphrc
+
+# Go
+/vendor/
+*.exe
+*.test
+coverage.out
+coverage.html
+/bin/
+/tmp/
+
+# Build artifacts
+/frontend/dist/
+/frontend/node_modules/
+
+# Environment
+.env
+.env.local
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
