@@ -9,14 +9,18 @@ import (
 
 // Config holds all runtime configuration loaded from environment variables.
 type Config struct {
-	Port             string
-	DataDir          string
-	JWTSecret        string
-	OpenRouterAPIKey string
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	BcryptCost       int
-	LogLevel         string
+	Port                string
+	DataDir             string
+	JWTSecret           string
+	OpenRouterAPIKey    string
+	AccessTokenTTL      time.Duration
+	RefreshTokenTTL     time.Duration
+	BcryptCost          int
+	LogLevel            string
+	LogFormat           string
+	DefaultLLMModel     string
+	DefaultTTSModel     string
+	DefaultWhisperModel string
 }
 
 // Load reads configuration from environment variables, applies defaults,
@@ -52,6 +56,16 @@ func Load() (*Config, error) {
 	} else {
 		cfg.LogLevel = "info"
 	}
+
+	if v := os.Getenv("LOG_FORMAT"); v != "" {
+		cfg.LogFormat = v
+	} else {
+		cfg.LogFormat = "json"
+	}
+
+	cfg.DefaultLLMModel = os.Getenv("DEFAULT_LLM_MODEL")
+	cfg.DefaultTTSModel = os.Getenv("DEFAULT_TTS_MODEL")
+	cfg.DefaultWhisperModel = os.Getenv("DEFAULT_WHISPER_MODEL")
 
 	return cfg, nil
 }
