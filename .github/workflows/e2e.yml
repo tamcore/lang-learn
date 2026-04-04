@@ -36,13 +36,7 @@ jobs:
       - name: Build server
         run: go build -o bin/server ./cmd/server
 
-      - name: Build seed
-        run: go build -o bin/seed ./cmd/seed
-
-      - name: Seed data
-        run: DATA_DIR=$(pwd)/data ./bin/seed
-
-      - name: Start server
+      - name: Start server (auto-bootstrap creates admin:admin)
         run: |
           JWT_SECRET=e2e-test-secret-at-least-32-chars DATA_DIR=$(pwd)/data ./bin/server &
           sleep 2
@@ -51,46 +45,60 @@ jobs:
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/healthz)
           [ "$STATUS" = "200" ] || (echo "healthz failed: $STATUS" && exit 1)
+          echo "✓ healthz OK"
 
-      - name: Test login (philipp)
+      - name: Test bootstrap admin login
         run: |
           RESP=$(curl -s -X POST http://localhost:8080/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"philipp@lang-learn.local","password":"admin123"}')
-          echo "$RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['data']['user']['is_admin']==True; print('✓ philipp login OK')"
-
-      - name: Test login (janka)
-        run: |
-          RESP=$(curl -s -X POST http://localhost:8080/api/auth/login \
-            -H "Content-Type: application/json" \
-            -d '{"email":"janka@lang-learn.local","password":"user123"}')
-          echo "$RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['data']['user']['is_admin']==False; print('✓ janka login OK')"
-
-      - name: Test courses list
-        run: |
-          TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
-            -H "Content-Type: application/json" \
-            -d '{"email":"philipp@lang-learn.local","password":"admin123"}' \
-            | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['access_token'])")
-          RESP=$(curl -s http://localhost:8080/api/courses -H "Authorization: Bearer $TOKEN")
+            -d '{"username":"admin","password":"admin","remember_me":true}')
           echo "$RESP" | python3 -c "
           import json,sys
           d=json.load(sys.stdin)
-          courses=d['data']
-          assert len(courses)==4, f'Expected 4 courses, got {len(courses)}'
-          langs={c['source_lang']+'->'+c['target_lang'] for c in courses}
-          assert 'sk->en' in langs
-          assert 'en->sk' in langs
-          assert 'en->de' in langs
-          assert 'de->en' in langs
-          print(f'✓ {len(courses)} courses found: {langs}')
+          assert d['data']['user']['is_admin']==True
+          assert 'access_token' in d['data']
+          assert 'refresh_token' in d['data']
+          print('✓ bootstrap admin login OK')
+          "
+
+      - name: Test admin creates user via API
+        run: |
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"admin","password":"admin","remember_me":true}' \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['access_token'])")
+          # Create a regular user
+          RESP=$(curl -s -X POST http://localhost:8080/api/admin/users \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"username":"testuser","password":"testpass1"}')
+          echo "$RESP" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          assert d['data']['username']=='testuser'
+          assert d['data']['is_admin']==False
+          print('✓ admin created testuser OK')
+          "
+
+      - name: Test regular user login
+        run: |
+          RESP=$(curl -s -X POST http://localhost:8080/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"testuser","password":"testpass1","remember_me":false}')
+          echo "$RESP" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          assert d['data']['user']['is_admin']==False
+          assert 'access_token' in d['data']
+          assert d['data'].get('refresh_token','')=='', 'remember_me=false should not return refresh_token'
+          print('✓ testuser login OK (no refresh_token)')
           "
 
       - name: Test admin users list
         run: |
           TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"philipp@lang-learn.local","password":"admin123"}' \
+            -d '{"username":"admin","password":"admin","remember_me":true}' \
             | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['access_token'])")
           RESP=$(curl -s http://localhost:8080/api/admin/users -H "Authorization: Bearer $TOKEN")
           echo "$RESP" | python3 -c "
@@ -99,8 +107,23 @@ jobs:
           users=d['data']
           assert len(users)==2, f'Expected 2 users, got {len(users)}'
           names={u['username'] for u in users}
-          assert 'philipp' in names and 'janka' in names
+          assert 'admin' in names and 'testuser' in names
           print(f'✓ {len(users)} users: {names}')
+          "
+
+      - name: Test courses list (empty initially)
+        run: |
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"admin","password":"admin","remember_me":true}' \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['access_token'])")
+          RESP=$(curl -s http://localhost:8080/api/courses -H "Authorization: Bearer $TOKEN")
+          echo "$RESP" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          courses=d['data']
+          assert isinstance(courses, list), f'Expected list, got {type(courses)}'
+          print(f'✓ courses list OK ({len(courses)} courses)')
           "
 
       - name: Test SPA fallback
@@ -108,3 +131,16 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/some/spa/route)
           [ "$STATUS" = "200" ] || (echo "SPA fallback failed: $STATUS" && exit 1)
           echo "✓ SPA fallback OK"
+
+      - name: Test non-admin cannot create users
+        run: |
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"testuser","password":"testpass1","remember_me":true}' \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['access_token'])")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/api/admin/users \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"username":"hacker","password":"nope1234"}')
+          [ "$STATUS" = "403" ] || (echo "Expected 403, got $STATUS" && exit 1)
+          echo "✓ non-admin blocked from creating users"
