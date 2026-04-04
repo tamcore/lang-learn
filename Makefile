@@ -1,8 +1,14 @@
 .PHONY: build test test-coverage lint docker-build docker-up docker-down clean
 
-# Build the Go server (requires frontend/dist to exist for embed)
-build:
+# Build the Go server (requires frontend to be built first)
+build: frontend-build
 	go build -ldflags="-s -w" -o bin/server ./cmd/server
+
+# Build frontend and copy dist for Go embed
+frontend-build:
+	cd frontend && npm ci --silent && npm run build
+	rm -rf internal/web/dist
+	cp -r frontend/dist internal/web/dist
 
 # Run all Go tests
 test:

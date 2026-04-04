@@ -1,0 +1,132 @@
+import type { ApiResponse, TokenResponse } from "./types";
+
+const BASE = "/api";
+
+function getToken(): string | null {
+  return localStorage.getItem("access_token");
+}
+
+function setTokens(access: string, refresh: string) {
+  localStorage.setItem("access_token", access);
+  localStorage.setItem("refresh_token", refresh);
+}
+
+export function clearTokens() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string>) || {}),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers });
+
+  if (res.status === 401 && token) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      headers["Authorization"] = `Bearer ${getToken()}`;
+      const retry = await fetch(`${BASE}${path}`, { ...options, headers });
+      const body: ApiResponse<T> = await retry.json();
+      if (body.error) throw new Error(body.error);
+      return body.data as T;
+    }
+    clearTokens();
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
+
+  const body: ApiResponse<T> = await res.json();
+  if (body.error) throw new Error(body.error);
+  return body.data as T;
+}
+
+async function tryRefresh(): Promise<boolean> {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const body: ApiResponse<TokenResponse> = await res.json();
+    if (body.data) {
+      setTokens(body.data.access_token, body.data.refresh_token);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export const api = {
+  register: async (username: string, email: string, password: string) => {
+    const data = await request<TokenResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, email, password }),
+    });
+    setTokens(data.access_token, data.refresh_token);
+    return data;
+  },
+
+  login: async (email: string, password: string) => {
+    const data = await request<TokenResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    setTokens(data.access_token, data.refresh_token);
+    return data;
+  },
+
+  logout: async () => {
+    try {
+      await request("/auth/logout", { method: "POST" });
+    } finally {
+      clearTokens();
+    }
+  },
+
+  getCourses: () => request<any[]>("/courses"),
+  getCourse: (id: string) => request<any>(`/courses/${id}`),
+  getLesson: (courseId: string, seq: number) =>
+    request<any>(`/courses/${courseId}/lessons/${seq}`),
+
+  getProgress: () => request<any[]>("/progress"),
+  getCourseProgress: (courseId: string) =>
+    request<any>(`/progress/${courseId}`),
+  updateProgress: (courseId: string, currentLesson: number) =>
+    request<any>(`/progress/${courseId}`, {
+      method: "PUT",
+      body: JSON.stringify({ current_lesson: currentLesson }),
+    }),
+
+  // Admin
+  getUsers: () => request<any[]>("/admin/users"),
+  updateUser: (id: string, data: any) =>
+    request<any>(`/admin/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteUser: (id: string) =>
+    request<any>(`/admin/users/${id}`, { method: "DELETE" }),
+
+  getAdminCourses: () => request<any[]>("/admin/courses"),
+  deleteCourse: (id: string) =>
+    request<any>(`/admin/courses/${id}`, { method: "DELETE" }),
+
+  getAudit: (date?: string) =>
+    request<any[]>(`/admin/audit${date ? `?date=${date}` : ""}`),
+};

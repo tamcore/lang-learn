@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/user/lang-learn/internal/auth"
 	"github.com/user/lang-learn/internal/store"
+	"github.com/user/lang-learn/internal/web"
 )
 
 // RouterConfig holds all dependencies needed to construct the API router.
@@ -80,6 +81,9 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/admin/audit", adminH.GetAudit)
 		})
 	})
+
+	// SPA fallback — serve frontend for all non-API routes
+	r.NotFound(web.SPAHandler().ServeHTTP)
 
 	return r
 }
