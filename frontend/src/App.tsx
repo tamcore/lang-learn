@@ -8,7 +8,10 @@ import LessonPage from "./pages/LessonPage";
 import AdminPage from "./pages/AdminPage";
 import { api } from "./api/client";
 import { useOnline } from "./hooks/useOnline";
+import { startSyncManager } from "./sync/syncManager";
 import "./styles/app.css";
+
+startSyncManager();
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
