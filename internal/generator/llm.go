@@ -21,7 +21,7 @@ type LLMClient struct {
 // NewLLMClient creates an LLM client.
 func NewLLMClient(apiKey, model string) *LLMClient {
 	if model == "" {
-		model = "qwen/qwen3-coder:free"
+		model = "google/gemini-2.5-flash"
 	}
 	return &LLMClient{
 		apiKey:  apiKey,

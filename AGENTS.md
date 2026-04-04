@@ -11,7 +11,7 @@ lang-learn is a self-hosted Pimsleur-style language learning PWA. Go backend, Re
 - **Backend**: Go 1.24+ (toolchain 1.26.1), chi router, bcrypt, JWT
 - **Frontend**: React 19, TypeScript, Vite 8
 - **Storage**: File-based JSON (no database)
-- **Generation**: OpenRouter API (qwen/qwen3-coder:free)
+- **Generation**: OpenRouter API (google/gemini-2.5-flash)
 - **Deploy**: Docker (multi-stage, single binary with embedded frontend)
 
 ## Repository Structure
