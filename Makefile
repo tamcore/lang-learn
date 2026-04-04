@@ -42,7 +42,7 @@ docker-down:
 clean:
 	rm -rf bin/ coverage.out coverage.html
 
-# Seed users and courses
+# Seed sample data (optional — server auto-creates admin:admin on first start)
 seed: build
 	./bin/seed
 
@@ -50,5 +50,5 @@ seed: build
 run: build
 	./bin/server
 
-# Full local dev setup: build, seed, run
-dev: build seed run
+# Full local dev setup: build and run
+dev: build run

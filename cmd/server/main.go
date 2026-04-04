@@ -13,7 +13,9 @@ import (
 	"github.com/user/lang-learn/internal/api"
 	"github.com/user/lang-learn/internal/config"
 	"github.com/user/lang-learn/internal/generator"
+	"github.com/user/lang-learn/internal/models"
 	"github.com/user/lang-learn/internal/store"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -30,6 +32,8 @@ func main() {
 		slog.Error("failed to init user store", "err", err)
 		os.Exit(1)
 	}
+
+	bootstrapAdmin(users, cfg.BcryptCost)
 
 	courses, err := store.NewFileCourseStore(filepath.Join(cfg.DataDir, "courses"))
 	if err != nil {
@@ -112,4 +116,38 @@ func setupLogger(level string) {
 		logLevel = slog.LevelInfo
 	}
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})))
+}
+
+// bootstrapAdmin creates a default admin user if no users exist.
+func bootstrapAdmin(users store.UserStorer, bcryptCost int) {
+	existing, err := users.List(context.Background())
+	if err != nil {
+		slog.Error("failed to list users for bootstrap", "err", err)
+		os.Exit(1)
+	}
+	if len(existing) > 0 {
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcryptCost)
+	if err != nil {
+		slog.Error("failed to hash bootstrap password", "err", err)
+		os.Exit(1)
+	}
+
+	now := time.Now().UTC()
+	admin := models.User{
+		ID:           "admin",
+		Username:     "admin",
+		PasswordHash: string(hash),
+		IsAdmin:      true,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	if err := users.Create(context.Background(), admin); err != nil {
+		slog.Error("failed to create bootstrap admin", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("bootstrapped default admin user (admin:admin) — change the password!")
 }
