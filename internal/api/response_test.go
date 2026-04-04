@@ -33,9 +33,9 @@ func TestWriteJSON_NilData(t *testing.T) {
 	t.Parallel()
 
 	rec := httptest.NewRecorder()
-	writeJSON(rec, http.StatusNoContent, nil)
+	writeJSON(rec, http.StatusOK, nil)
 
-	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
 
 	var env envelope
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
