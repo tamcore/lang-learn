@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -178,4 +179,126 @@ func TestUpsertProgress(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// --- GetCourseProgress tests ---
+
+func TestGetCourseProgress_Success(t *testing.T) {
+	t.Parallel()
+	h, _, ps, _ := setupCourseTest(t)
+
+	require.NoError(t, ps.Upsert(context.Background(), models.CourseProgress{
+		UserID: "user1", CourseID: "c1", CurrentLesson: 3,
+	}))
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Get("/api/progress/{courseID}", h.GetCourseProgress)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/progress/c1", nil)
+	testutil.WithJWT(t, req, testSecret, "user1", false)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	data := env.Data.(map[string]any)
+	assert.Equal(t, "c1", data["course_id"])
+	assert.Equal(t, float64(3), data["current_lesson"])
+}
+
+func TestGetCourseProgress_NotFound(t *testing.T) {
+	t.Parallel()
+	h, _, _, _ := setupCourseTest(t)
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Get("/api/progress/{courseID}", h.GetCourseProgress)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/progress/nonexistent", nil)
+	testutil.WithJWT(t, req, testSecret, "user1", false)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestGetCourseProgress_Unauthorized(t *testing.T) {
+	t.Parallel()
+	h, _, _, _ := setupCourseTest(t)
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Get("/api/progress/{courseID}", h.GetCourseProgress)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/progress/c1", nil)
+	// No JWT
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+// --- AudioHandler tests ---
+
+func TestNewAudioHandler(t *testing.T) {
+	t.Parallel()
+	h := NewAudioHandler("/some/path")
+	assert.NotNil(t, h)
+	assert.Equal(t, "/some/path", h.audioBaseDir)
+}
+
+func TestServeAudio_Success(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	audioDir := dir + "/course1/audio"
+	require.NoError(t, os.MkdirAll(audioDir, 0o755))
+	require.NoError(t, os.WriteFile(audioDir+"/hello.mp3", []byte("fake-audio-data"), 0o644))
+
+	h := NewAudioHandler(dir)
+
+	r := chi.NewRouter()
+	r.Get("/api/audio/{courseID}/{filename}", h.ServeAudio)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/audio/course1/hello.mp3", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "fake-audio-data", rec.Body.String())
+}
+
+func TestServeAudio_NotFound(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	h := NewAudioHandler(dir)
+
+	r := chi.NewRouter()
+	r.Get("/api/audio/{courseID}/{filename}", h.ServeAudio)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/audio/course1/missing.mp3", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestServeAudio_PathTraversal(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	h := NewAudioHandler(dir)
+
+	r := chi.NewRouter()
+	r.Get("/api/audio/{courseID}/{filename}", h.ServeAudio)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/audio/..%2F../etc/passwd", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	// Should not return 200
+	assert.NotEqual(t, http.StatusOK, rec.Code)
 }

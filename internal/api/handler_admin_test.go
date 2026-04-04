@@ -189,3 +189,195 @@ func TestAdminGetAudit(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+// --- CreateUser tests ---
+
+func TestAdminCreateUser_Success(t *testing.T) {
+	t.Parallel()
+	h, _, _ := setupAdminTest(t)
+
+	body := `{"username":"newuser","password":"longpassword","is_admin":false}`
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.CreateUser(rec, req)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	data := env.Data.(map[string]any)
+	assert.Equal(t, "newuser", data["username"])
+	assert.False(t, data["is_admin"].(bool))
+}
+
+func TestAdminCreateUser_Admin(t *testing.T) {
+	t.Parallel()
+	h, _, _ := setupAdminTest(t)
+
+	body := `{"username":"adminuser","password":"longpassword","is_admin":true}`
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.CreateUser(rec, req)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	data := env.Data.(map[string]any)
+	assert.True(t, data["is_admin"].(bool))
+}
+
+func TestAdminCreateUser_MissingFields(t *testing.T) {
+	t.Parallel()
+	h, _, _ := setupAdminTest(t)
+
+	body := `{"username":"","password":""}`
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.CreateUser(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestAdminCreateUser_ShortPassword(t *testing.T) {
+	t.Parallel()
+	h, _, _ := setupAdminTest(t)
+
+	body := `{"username":"short","password":"abc"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.CreateUser(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	assert.Contains(t, env.Error, "at least 8 characters")
+}
+
+func TestAdminCreateUser_InvalidBody(t *testing.T) {
+	t.Parallel()
+	h, _, _ := setupAdminTest(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", strings.NewReader("not json"))
+	rec := httptest.NewRecorder()
+	h.CreateUser(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestAdminCreateUser_DuplicateUsername(t *testing.T) {
+	t.Parallel()
+	h, us, _ := setupAdminTest(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	require.NoError(t, us.Create(context.Background(), models.User{
+		ID: "u1", Username: "taken", Email: "taken@test.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now,
+	}))
+
+	body := `{"username":"taken","password":"longpassword"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.CreateUser(rec, req)
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+}
+
+// --- UpdateUser additional tests ---
+
+func TestAdminUpdateUser_NotFound(t *testing.T) {
+	t.Parallel()
+	h, _, _ := setupAdminTest(t)
+
+	r := chi.NewRouter()
+	r.Patch("/api/admin/users/{id}", h.UpdateUser)
+
+	body := `{"username":"whatever"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/users/nonexistent", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestAdminUpdateUser_InvalidBody(t *testing.T) {
+	t.Parallel()
+	h, us, _ := setupAdminTest(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	require.NoError(t, us.Create(context.Background(), models.User{
+		ID: "u1", Username: "old", Email: "old@test.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now,
+	}))
+
+	r := chi.NewRouter()
+	r.Patch("/api/admin/users/{id}", h.UpdateUser)
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/users/u1", strings.NewReader("bad json"))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestAdminUpdateUser_EmailOnly(t *testing.T) {
+	t.Parallel()
+	h, us, _ := setupAdminTest(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	require.NoError(t, us.Create(context.Background(), models.User{
+		ID: "u1", Username: "phil", Email: "old@test.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now,
+	}))
+
+	r := chi.NewRouter()
+	r.Patch("/api/admin/users/{id}", h.UpdateUser)
+
+	body := `{"email":"new@test.com"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/users/u1", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	data := env.Data.(map[string]any)
+	assert.Equal(t, "phil", data["username"])
+}
+
+// --- DeleteUser additional tests ---
+
+func TestAdminDeleteUser_NotFound(t *testing.T) {
+	t.Parallel()
+	h, _, _ := setupAdminTest(t)
+
+	r := chi.NewRouter()
+	r.Delete("/api/admin/users/{id}", h.DeleteUser)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/users/nonexistent", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestAdminDeleteUser_VerifyRemoved(t *testing.T) {
+	t.Parallel()
+	h, us, _ := setupAdminTest(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	require.NoError(t, us.Create(context.Background(), models.User{
+		ID: "u1", Username: "del", Email: "del@test.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now,
+	}))
+
+	r := chi.NewRouter()
+	r.Delete("/api/admin/users/{id}", h.DeleteUser)
+	r.Get("/api/admin/users/{id}", h.GetUser)
+
+	// Delete
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/users/u1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Verify gone
+	req = httptest.NewRequest(http.MethodGet, "/api/admin/users/u1", nil)
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
