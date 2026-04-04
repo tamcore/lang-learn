@@ -32,3 +32,4 @@ coverage.html
 *.swp
 /seed
 /server
+AGENTS.md.local
