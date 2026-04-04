@@ -32,19 +32,10 @@ jobs:
         run: go vet ./...
 
       - name: Run tests
-        run: go test -coverprofile=coverage.out $(go list ./internal/...)
+        run: go test -cover ./internal/...
 
-      - name: Check coverage
-        run: |
-          go tool cover -func coverage.out | grep total
-          TOTAL=$(go tool cover -func coverage.out | grep total | awk '{print $3}' | tr -d '%')
-          echo "Total coverage: ${TOTAL}%"
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.out
+      - name: Verify build
+        run: go build ./...
 
   frontend:
     runs-on: ubuntu-latest
