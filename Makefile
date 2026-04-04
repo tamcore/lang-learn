@@ -1,8 +1,9 @@
-.PHONY: build test test-coverage lint docker-build docker-up docker-down clean
+.PHONY: build test test-coverage lint docker-build docker-up docker-down clean seed run dev
 
 # Build the Go server (requires frontend to be built first)
 build: frontend-build
 	go build -ldflags="-s -w" -o bin/server ./cmd/server
+	go build -ldflags="-s -w" -o bin/seed ./cmd/seed
 
 # Build frontend and copy dist for Go embed
 frontend-build:
@@ -40,3 +41,14 @@ docker-down:
 # Remove build artifacts
 clean:
 	rm -rf bin/ coverage.out coverage.html
+
+# Seed users and courses
+seed: build
+	./bin/seed
+
+# Run the server locally
+run: build
+	./bin/server
+
+# Full local dev setup: build, seed, run
+dev: build seed run
