@@ -8,18 +8,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/user/lang-learn/internal/models"
 	"github.com/user/lang-learn/internal/store"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminHandler groups admin HTTP handlers.
 type AdminHandler struct {
-	users   store.UserStorer
-	courses store.CourseStorer
-	audit   store.AuditStorer
+	users      store.UserStorer
+	courses    store.CourseStorer
+	audit      store.AuditStorer
+	bcryptCost int
 }
 
 // NewAdminHandler creates an AdminHandler.
-func NewAdminHandler(users store.UserStorer, courses store.CourseStorer, audit store.AuditStorer) *AdminHandler {
-	return &AdminHandler{users: users, courses: courses, audit: audit}
+func NewAdminHandler(users store.UserStorer, courses store.CourseStorer, audit store.AuditStorer, bcryptCost int) *AdminHandler {
+	return &AdminHandler{users: users, courses: courses, audit: audit, bcryptCost: bcryptCost}
 }
 
 // ListUsers handles GET /api/admin/users.
@@ -34,6 +36,53 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		dtos = append(dtos, toUserDTO(u))
 	}
 	writeJSON(w, http.StatusOK, dtos)
+}
+
+// CreateUser handles POST /api/admin/users.
+func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		IsAdmin  bool   `json:"is_admin"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Username == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "username and password are required")
+		return
+	}
+	if len(req.Password) < 8 {
+		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), h.bcryptCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	now := time.Now().UTC()
+	user := models.User{
+		ID:           generateID(),
+		Username:     req.Username,
+		PasswordHash: string(hash),
+		IsAdmin:      req.IsAdmin,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	if err := h.users.Create(r.Context(), user); err != nil {
+		if errors.Is(err, store.ErrConflict) {
+			writeError(w, http.StatusConflict, "username already taken")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusCreated, toUserDTO(user))
 }
 
 // GetUser handles GET /api/admin/users/{id}.

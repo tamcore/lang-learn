@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,8 +11,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/user/lang-learn/internal/models"
 	"github.com/user/lang-learn/internal/store"
 	"github.com/user/lang-learn/internal/testutil"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const testSecret = "test-secret-key-at-least-32-chars!!"
@@ -25,69 +28,43 @@ func newTestAuthHandler(t *testing.T) (*AuthHandler, *store.FileUserStore) {
 	return h, users
 }
 
-func TestRegister_Success(t *testing.T) {
+func TestLogin_MissingFields(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestAuthHandler(t)
 
-	body := `{"username":"philipp","email":"philipp@test.com","password":"secret123"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	body := `{"username":"","password":""}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-
-	h.Register(rec, req)
-
-	assert.Equal(t, http.StatusCreated, rec.Code)
-
-	var env envelope
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
-	data := env.Data.(map[string]any)
-	assert.NotEmpty(t, data["access_token"])
-	assert.NotEmpty(t, data["refresh_token"])
-	user := data["user"].(map[string]any)
-	assert.Equal(t, "philipp", user["username"])
-}
-
-func TestRegister_DuplicateEmail(t *testing.T) {
-	t.Parallel()
-	h, _ := newTestAuthHandler(t)
-
-	body := `{"username":"u1","email":"dup@test.com","password":"password1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
-	rec := httptest.NewRecorder()
-	h.Register(rec, req)
-	assert.Equal(t, http.StatusCreated, rec.Code)
-
-	req2 := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
-	rec2 := httptest.NewRecorder()
-	h.Register(rec2, req2)
-	assert.Equal(t, http.StatusConflict, rec2.Code)
-}
-
-func TestRegister_MissingFields(t *testing.T) {
-	t.Parallel()
-	h, _ := newTestAuthHandler(t)
-
-	body := `{"username":"","email":"","password":""}`
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
-	rec := httptest.NewRecorder()
-	h.Register(rec, req)
+	h.Login(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestLogin_UnknownUser(t *testing.T) {
+	t.Parallel()
+	h, _ := newTestAuthHandler(t)
+
+	body := `{"username":"nobody","password":"password1"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.Login(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
 func TestLogin_Success(t *testing.T) {
 	t.Parallel()
-	h, _ := newTestAuthHandler(t)
+	h, users := newTestAuthHandler(t)
 
-	// Register first
-	body := `{"username":"login_test","email":"login@test.com","password":"pass1234"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	// Create user directly in store
+	hash, _ := bcrypt.GenerateFromPassword([]byte("pass1234"), 4)
+	now := time.Now().UTC()
+	require.NoError(t, users.Create(context.Background(), models.User{
+		ID: "u1", Username: "testuser", PasswordHash: string(hash),
+		CreatedAt: now, UpdatedAt: now,
+	}))
+
+	body := `{"username":"testuser","password":"pass1234","remember_me":true}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-	h.Register(rec, req)
-	require.Equal(t, http.StatusCreated, rec.Code)
-
-	// Login
-	body = `{"email":"login@test.com","password":"pass1234"}`
-	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
-	rec = httptest.NewRecorder()
 	h.Login(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -95,30 +72,47 @@ func TestLogin_Success(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
 	data := env.Data.(map[string]any)
 	assert.NotEmpty(t, data["access_token"])
+	assert.NotEmpty(t, data["refresh_token"])
+}
+
+func TestLogin_NoRememberMe(t *testing.T) {
+	t.Parallel()
+	h, users := newTestAuthHandler(t)
+
+	hash, _ := bcrypt.GenerateFromPassword([]byte("pass1234"), 4)
+	now := time.Now().UTC()
+	require.NoError(t, users.Create(context.Background(), models.User{
+		ID: "u1", Username: "testuser", PasswordHash: string(hash),
+		CreatedAt: now, UpdatedAt: now,
+	}))
+
+	body := `{"username":"testuser","password":"pass1234"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.Login(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	data := env.Data.(map[string]any)
+	assert.NotEmpty(t, data["access_token"])
+	// No refresh token when remember_me is false
+	_, hasRefresh := data["refresh_token"]
+	assert.False(t, hasRefresh)
 }
 
 func TestLogin_WrongPassword(t *testing.T) {
 	t.Parallel()
-	h, _ := newTestAuthHandler(t)
+	h, users := newTestAuthHandler(t)
 
-	body := `{"username":"u","email":"wrong@test.com","password":"correct1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
-	rec := httptest.NewRecorder()
-	h.Register(rec, req)
-	require.Equal(t, http.StatusCreated, rec.Code)
+	hash, _ := bcrypt.GenerateFromPassword([]byte("correct1"), 4)
+	now := time.Now().UTC()
+	require.NoError(t, users.Create(context.Background(), models.User{
+		ID: "u1", Username: "testuser", PasswordHash: string(hash),
+		CreatedAt: now, UpdatedAt: now,
+	}))
 
-	body = `{"email":"wrong@test.com","password":"incorrec1"}`
-	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
-	rec = httptest.NewRecorder()
-	h.Login(rec, req)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
-func TestLogin_UnknownEmail(t *testing.T) {
-	t.Parallel()
-	h, _ := newTestAuthHandler(t)
-
-	body := `{"email":"nobody@test.com","password":"pass"}`
+	body := `{"username":"testuser","password":"wrongpass"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.Login(rec, req)
@@ -127,14 +121,21 @@ func TestLogin_UnknownEmail(t *testing.T) {
 
 func TestRefresh_Success(t *testing.T) {
 	t.Parallel()
-	h, _ := newTestAuthHandler(t)
+	h, users := newTestAuthHandler(t)
 
-	// Register to get tokens
-	body := `{"username":"refresh","email":"refresh@test.com","password":"password1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	hash, _ := bcrypt.GenerateFromPassword([]byte("password1"), 4)
+	now := time.Now().UTC()
+	require.NoError(t, users.Create(context.Background(), models.User{
+		ID: "u1", Username: "refreshuser", PasswordHash: string(hash),
+		CreatedAt: now, UpdatedAt: now,
+	}))
+
+	// Login with remember_me to get refresh token
+	body := `{"username":"refreshuser","password":"password1","remember_me":true}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-	h.Register(rec, req)
-	require.Equal(t, http.StatusCreated, rec.Code)
+	h.Login(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
 
 	var env envelope
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))

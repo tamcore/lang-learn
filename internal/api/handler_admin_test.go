@@ -30,7 +30,7 @@ func setupAdminTest(t *testing.T) (*AdminHandler, *store.FileUserStore, *store.F
 	audit, err := store.NewFileAuditStore(dir + "/audit")
 	require.NoError(t, err)
 
-	h := NewAdminHandler(users, courses, audit)
+	h := NewAdminHandler(users, courses, audit, 4)
 	return h, users, courses
 }
 
@@ -181,7 +181,7 @@ func TestAdminGetAudit(t *testing.T) {
 	auditStore, err := store.NewFileAuditStore(dir + "/audit")
 	require.NoError(t, err)
 
-	h := NewAdminHandler(users, courses, auditStore)
+	h := NewAdminHandler(users, courses, auditStore, 4)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/audit", nil)
 	rec := httptest.NewRecorder()

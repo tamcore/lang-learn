@@ -37,7 +37,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	authH := NewAuthHandler(cfg.Users, cfg.JWTSecret, cfg.AccessTTL, cfg.RefreshTTL, cfg.BcryptCost)
 	courseH := NewCourseHandler(cfg.Courses, cfg.Progress)
 	audioH := NewAudioHandler(cfg.CoursesDir)
-	adminH := NewAdminHandler(cfg.Users, cfg.Courses, cfg.Audit)
+	adminH := NewAdminHandler(cfg.Users, cfg.Courses, cfg.Audit, cfg.BcryptCost)
 
 	// Health check
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -51,7 +51,6 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		// Public auth endpoints (rate limited)
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(authRL)
-			r.Post("/register", authH.Register)
 			r.Post("/login", authH.Login)
 			r.Post("/refresh", authH.Refresh)
 			r.Post("/logout", authH.Logout)
@@ -77,6 +76,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Use(auth.RequireAdmin(cfg.JWTSecret))
 
 			r.Get("/admin/users", adminH.ListUsers)
+			r.Post("/admin/users", adminH.CreateUser)
 			r.Get("/admin/users/{id}", adminH.GetUser)
 			r.Patch("/admin/users/{id}", adminH.UpdateUser)
 			r.Delete("/admin/users/{id}", adminH.DeleteUser)

@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/user/lang-learn/internal/auth"
@@ -32,15 +31,10 @@ func NewAuthHandler(users store.UserStorer, jwtSecret string, accessTTL, refresh
 	}
 }
 
-type registerRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	RememberMe bool   `json:"remember_me"`
 }
 
 type refreshRequest struct {
@@ -49,73 +43,18 @@ type refreshRequest struct {
 
 type tokenResponse struct {
 	AccessToken  string  `json:"access_token"`
-	RefreshToken string  `json:"refresh_token"`
+	RefreshToken string  `json:"refresh_token,omitempty"`
 	User         userDTO `json:"user"`
 }
 
 type userDTO struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
-	Email    string `json:"email"`
 	IsAdmin  bool   `json:"is_admin"`
 }
 
 func toUserDTO(u models.User) userDTO {
-	return userDTO{ID: u.ID, Username: u.Username, Email: u.Email, IsAdmin: u.IsAdmin}
-}
-
-// Register handles POST /api/auth/register.
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req registerRequest
-	if err := readJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		writeError(w, http.StatusBadRequest, "username, email, and password are required")
-		return
-	}
-	if len(req.Password) < 8 {
-		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
-		return
-	}
-	if !strings.Contains(req.Email, "@") {
-		writeError(w, http.StatusBadRequest, "invalid email address")
-		return
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), h.bcryptCost)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-
-	now := time.Now().UTC()
-	user := models.User{
-		ID:           generateID(),
-		Username:     req.Username,
-		Email:        req.Email,
-		PasswordHash: string(hash),
-		IsAdmin:      false,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
-
-	if err := h.users.Create(r.Context(), user); err != nil {
-		if errors.Is(err, store.ErrConflict) {
-			writeError(w, http.StatusConflict, "email already registered")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-
-	resp, err := h.issueTokens(user)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	writeJSON(w, http.StatusCreated, resp)
+	return userDTO{ID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin}
 }
 
 // Login handles POST /api/auth/login.
@@ -125,12 +64,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if req.Email == "" || req.Password == "" {
-		writeError(w, http.StatusBadRequest, "email and password are required")
+	if req.Username == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "username and password are required")
 		return
 	}
 
-	user, err := h.users.GetByEmail(r.Context(), req.Email)
+	user, err := h.users.GetByUsername(r.Context(), req.Username)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusUnauthorized, "invalid credentials")
@@ -145,11 +84,26 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.issueTokens(user)
+	accessToken, err := auth.IssueToken(h.jwtSecret, user.ID, user.IsAdmin, h.accessTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+
+	resp := tokenResponse{
+		AccessToken: accessToken,
+		User:        toUserDTO(user),
+	}
+
+	if req.RememberMe {
+		refreshToken, err := auth.IssueToken(h.jwtSecret, user.ID, user.IsAdmin, h.refreshTTL)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		resp.RefreshToken = refreshToken
+	}
+
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -177,31 +131,25 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.issueTokens(user)
+	accessToken, err := auth.IssueToken(h.jwtSecret, user.ID, user.IsAdmin, h.accessTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	refreshToken, err := auth.IssueToken(h.jwtSecret, user.ID, user.IsAdmin, h.refreshTTL)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, tokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User:         toUserDTO(user),
+	})
 }
 
 // Logout handles POST /api/auth/logout. Stateless — client discards tokens.
 func (h *AuthHandler) Logout(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
-}
-
-func (h *AuthHandler) issueTokens(user models.User) (tokenResponse, error) {
-	accessToken, err := auth.IssueToken(h.jwtSecret, user.ID, user.IsAdmin, h.accessTTL)
-	if err != nil {
-		return tokenResponse{}, err
-	}
-	refreshToken, err := auth.IssueToken(h.jwtSecret, user.ID, user.IsAdmin, h.refreshTTL)
-	if err != nil {
-		return tokenResponse{}, err
-	}
-	return tokenResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User:         toUserDTO(user),
-	}, nil
 }
