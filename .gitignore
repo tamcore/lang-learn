@@ -16,6 +16,10 @@ coverage.html
 /frontend/dist/
 /frontend/node_modules/
 /internal/web/dist/
+/bin/
+
+# Runtime data (recreated by seed)
+/data/
 
 # Environment
 .env
