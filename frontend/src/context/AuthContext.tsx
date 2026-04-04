@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem("user");
+    const stored = localStorage.getItem("user") || sessionStorage.getItem("user");
     if (stored) {
       try {
         dispatch({ type: "SET_USER", user: JSON.parse(stored) });
@@ -71,9 +71,11 @@ export function useAuth() {
 
 export function loginUser(
   dispatch: React.Dispatch<AuthAction>,
-  user: User
+  user: User,
+  remember?: boolean
 ) {
-  localStorage.setItem("user", JSON.stringify(user));
+  const store = remember ? localStorage : sessionStorage;
+  store.setItem("user", JSON.stringify(user));
   dispatch({ type: "SET_USER", user });
 }
 

@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth, loginUser } from "../context/AuthContext";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const { dispatch } = useAuth();
   const navigate = useNavigate();
@@ -14,8 +15,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     try {
-      const data = await api.login(email, password);
-      loginUser(dispatch, data.user);
+      const data = await api.login(username, password, rememberMe);
+      loginUser(dispatch, data.user, rememberMe);
       navigate("/");
     } catch (err: any) {
       setError(err.message || "Login failed");
@@ -27,11 +28,12 @@ export default function LoginPage() {
       <h2 style={{ marginBottom: "1.5rem" }}>Login</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label>Email</label>
+          <label>Username</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
             required
           />
         </div>
@@ -41,17 +43,23 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
           />
         </div>
+        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0.75rem 0" }}>
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+          />
+          Remember me
+        </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" className="btn-primary" style={{ width: "100%", marginTop: "0.5rem" }}>
           Login
         </button>
       </form>
-      <p style={{ marginTop: "1rem", textAlign: "center" }}>
-        Don't have an account? <Link to="/register">Register</Link>
-      </p>
     </div>
   );
 }

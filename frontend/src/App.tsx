@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { AuthProvider, useAuth, logoutUser } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import CoursesPage from "./pages/CoursesPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonPage from "./pages/LessonPage";
@@ -50,7 +49,6 @@ export default function App() {
         <Nav />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<PrivateRoute><CoursesPage /></PrivateRoute>} />
           <Route path="/courses/:id" element={<PrivateRoute><CourseDetailPage /></PrivateRoute>} />
           <Route path="/courses/:id/lessons/:seq" element={<PrivateRoute><LessonPage /></PrivateRoute>} />

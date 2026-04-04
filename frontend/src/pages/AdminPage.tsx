@@ -54,13 +54,12 @@ export default function AdminPage() {
       {tab === "users" && (
         <table>
           <thead>
-            <tr><th>Username</th><th>Email</th><th>Admin</th><th>Actions</th></tr>
+            <tr><th>Username</th><th>Admin</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
                 <td>{u.username}</td>
-                <td>{u.email}</td>
                 <td>{u.is_admin ? <span className="badge badge-admin">Admin</span> : "—"}</td>
                 <td style={{ display: "flex", gap: "0.5rem" }}>
                   <button className="btn-primary" onClick={() => toggleAdmin(u)}>

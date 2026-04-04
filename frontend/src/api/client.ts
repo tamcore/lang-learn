@@ -2,18 +2,34 @@ import type { ApiResponse, TokenResponse } from "./types";
 
 const BASE = "/api";
 
-function getToken(): string | null {
-  return localStorage.getItem("access_token");
+function getStorage(): Storage {
+  return localStorage.getItem("remember_me") === "true"
+    ? localStorage
+    : sessionStorage;
 }
 
-function setTokens(access: string, refresh: string) {
-  localStorage.setItem("access_token", access);
-  localStorage.setItem("refresh_token", refresh);
+function getToken(): string | null {
+  return getStorage().getItem("access_token");
+}
+
+function setTokens(access: string, refresh?: string, remember?: boolean) {
+  if (remember) {
+    localStorage.setItem("remember_me", "true");
+  }
+  const store = getStorage();
+  store.setItem("access_token", access);
+  if (refresh) {
+    store.setItem("refresh_token", refresh);
+  }
 }
 
 export function clearTokens() {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
+  for (const s of [localStorage, sessionStorage]) {
+    s.removeItem("access_token");
+    s.removeItem("refresh_token");
+    s.removeItem("user");
+  }
+  localStorage.removeItem("remember_me");
 }
 
 async function request<T>(
@@ -51,7 +67,7 @@ async function request<T>(
 }
 
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = localStorage.getItem("refresh_token");
+  const refreshToken = getStorage().getItem("refresh_token");
   if (!refreshToken) return false;
 
   try {
@@ -73,21 +89,12 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 export const api = {
-  register: async (username: string, email: string, password: string) => {
-    const data = await request<TokenResponse>("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ username, email, password }),
-    });
-    setTokens(data.access_token, data.refresh_token);
-    return data;
-  },
-
-  login: async (email: string, password: string) => {
+  login: async (username: string, password: string, rememberMe: boolean) => {
     const data = await request<TokenResponse>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password, remember_me: rememberMe }),
     });
-    setTokens(data.access_token, data.refresh_token);
+    setTokens(data.access_token, data.refresh_token, rememberMe);
     return data;
   },
 
@@ -115,6 +122,11 @@ export const api = {
 
   // Admin
   getUsers: () => request<any[]>("/admin/users"),
+  createUser: (username: string, password: string, isAdmin: boolean) =>
+    request<any>("/admin/users", {
+      method: "POST",
+      body: JSON.stringify({ username, password, is_admin: isAdmin }),
+    }),
   updateUser: (id: string, data: any) =>
     request<any>(`/admin/users/${id}`, {
       method: "PATCH",
