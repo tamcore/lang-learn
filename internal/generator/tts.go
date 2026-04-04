@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,7 +45,7 @@ func NewTTSClient(apiKey, model, voice, baseURL string) *TTSClient {
 		apiKey:  apiKey,
 		model:   model,
 		voice:   voice,
-		format:  "wav",
+		format:  "pcm16",
 		baseURL: baseURL,
 		client:  &http.Client{},
 		sem:     make(chan struct{}, 3),
@@ -168,12 +169,12 @@ func (c *TTSClient) readSSEAudio(r io.Reader) ([]byte, error) {
 	}
 
 	fullB64 := strings.Join(audioChunks, "")
-	audioBytes, err := base64.StdEncoding.DecodeString(fullB64)
+	pcmBytes, err := base64.StdEncoding.DecodeString(fullB64)
 	if err != nil {
 		return nil, fmt.Errorf("tts: decode audio base64: %w", err)
 	}
 
-	return audioBytes, nil
+	return wrapPCM16InWAV(pcmBytes, 24000), nil
 }
 
 // SynthesizeBatch generates audio for multiple texts concurrently (up to 3 at a time).
@@ -200,4 +201,41 @@ func (c *TTSClient) SynthesizeBatch(ctx context.Context, texts []string) map[int
 
 	wg.Wait()
 	return results
+}
+
+// wrapPCM16InWAV wraps raw 16-bit PCM samples in a WAV container.
+// sampleRate is typically 24000 for OpenAI audio models. Mono, 16-bit.
+func wrapPCM16InWAV(pcm []byte, sampleRate uint32) []byte {
+	const (
+		numChannels   = 1
+		bitsPerSample = 16
+	)
+	byteRate := sampleRate * numChannels * bitsPerSample / 8
+	blockAlign := uint16(numChannels * bitsPerSample / 8)
+	dataSize := uint32(len(pcm))
+
+	var buf bytes.Buffer
+	buf.Grow(44 + len(pcm))
+
+	// RIFF header
+	buf.WriteString("RIFF")
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(36+dataSize))
+	buf.WriteString("WAVE")
+
+	// fmt sub-chunk
+	buf.WriteString("fmt ")
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(16)) // sub-chunk size
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(1))  // PCM format
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(numChannels))
+	_ = binary.Write(&buf, binary.LittleEndian, sampleRate)
+	_ = binary.Write(&buf, binary.LittleEndian, byteRate)
+	_ = binary.Write(&buf, binary.LittleEndian, blockAlign)
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(bitsPerSample))
+
+	// data sub-chunk
+	buf.WriteString("data")
+	_ = binary.Write(&buf, binary.LittleEndian, dataSize)
+	buf.Write(pcm)
+
+	return buf.Bytes()
 }

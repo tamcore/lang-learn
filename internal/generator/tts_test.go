@@ -46,19 +46,23 @@ func sseAudioResponse(w http.ResponseWriter, audioData []byte) {
 
 func TestSynthesize_Success(t *testing.T) {
 	t.Parallel()
-	fakeAudio := []byte("fake-audio-data-for-tts-test")
+	fakePCM := []byte("fake-audio-data-for-tts-test")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/chat/completions", r.URL.Path)
 		assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		sseAudioResponse(w, fakeAudio)
+		sseAudioResponse(w, fakePCM)
 	}))
 	defer srv.Close()
 
 	c := NewTTSClient("test-key", "openai/gpt-audio-mini", "alloy", srv.URL)
 	data, err := c.Synthesize(context.Background(), "Hello world")
 	require.NoError(t, err)
-	assert.Equal(t, fakeAudio, data)
+	// Result should be a WAV file (44-byte header + PCM data)
+	assert.True(t, len(data) > 44)
+	assert.Equal(t, "RIFF", string(data[:4]))
+	assert.Equal(t, "WAVE", string(data[8:12]))
+	assert.Equal(t, fakePCM, data[44:])
 }
 
 func TestSynthesize_ServerError(t *testing.T) {
@@ -116,9 +120,10 @@ func TestSynthesizeBatch_Success(t *testing.T) {
 	c := NewTTSClient("key", "", "", srv.URL)
 	results := c.SynthesizeBatch(context.Background(), []string{"one", "two", "three"})
 	assert.Len(t, results, 3)
-	assert.Equal(t, []byte("audio-data"), results[0])
-	assert.Equal(t, []byte("audio-data"), results[1])
-	assert.Equal(t, []byte("audio-data"), results[2])
+	for i := 0; i < 3; i++ {
+		assert.Equal(t, "RIFF", string(results[i][:4]))
+		assert.Equal(t, []byte("audio-data"), results[i][44:])
+	}
 }
 
 func TestSynthesizeBatch_PartialFailure(t *testing.T) {
@@ -154,4 +159,25 @@ func TestSynthesize_ConcurrencyLimit(t *testing.T) {
 	c := NewTTSClient("key", "", "", srv.URL)
 	results := c.SynthesizeBatch(context.Background(), []string{"1", "2", "3", "4", "5"})
 	assert.Len(t, results, 5)
+}
+
+func TestWrapPCM16InWAV(t *testing.T) {
+	t.Parallel()
+	pcm := make([]byte, 100)
+	for i := range pcm {
+		pcm[i] = byte(i)
+	}
+	wav := wrapPCM16InWAV(pcm, 24000)
+
+	// Check WAV header
+	assert.Equal(t, "RIFF", string(wav[:4]))
+	assert.Equal(t, "WAVE", string(wav[8:12]))
+	assert.Equal(t, "fmt ", string(wav[12:16]))
+	assert.Equal(t, "data", string(wav[36:40]))
+
+	// Total size = 44 header + 100 data
+	assert.Equal(t, 144, len(wav))
+
+	// PCM data follows header
+	assert.Equal(t, pcm, wav[44:])
 }

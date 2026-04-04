@@ -457,7 +457,8 @@ func TestRun_FullPipeline_WithTTS(t *testing.T) {
 		audioPath := filepath.Join(dataDir, "courses", course.ID, turn.AudioFile)
 		data, err := os.ReadFile(audioPath)
 		require.NoError(t, err)
-		assert.Equal(t, []byte("fake-wav-audio"), data)
+		assert.Equal(t, "RIFF", string(data[:4]))
+		assert.Equal(t, []byte("fake-wav-audio"), data[44:])
 	}
 }
 
