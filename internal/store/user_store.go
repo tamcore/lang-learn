@@ -68,7 +68,7 @@ func (s *FileUserStore) write(user models.User) error {
 	return nil
 }
 
-// Create persists a new user. Returns ErrConflict if the ID or email is already taken.
+// Create persists a new user. Returns ErrConflict if the ID or username is already taken.
 func (s *FileUserStore) Create(_ context.Context, user models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -78,14 +78,14 @@ func (s *FileUserStore) Create(_ context.Context, user models.User) error {
 		return fmt.Errorf("user id %q already exists: %w", user.ID, ErrConflict)
 	}
 
-	// Duplicate email check requires scanning all existing users.
+	// Duplicate username check requires scanning all existing users.
 	existing, err := s.readAll()
 	if err != nil {
 		return err
 	}
 	for _, u := range existing {
-		if u.Email == user.Email {
-			return fmt.Errorf("email %q already taken: %w", user.Email, ErrConflict)
+		if u.Username == user.Username {
+			return fmt.Errorf("username %q already taken: %w", user.Username, ErrConflict)
 		}
 	}
 
@@ -129,8 +129,25 @@ func (s *FileUserStore) GetByEmail(_ context.Context, email string) (models.User
 	return models.User{}, fmt.Errorf("email %q: %w", email, ErrNotFound)
 }
 
+// GetByUsername returns the user with the given username. Returns ErrNotFound if absent.
+func (s *FileUserStore) GetByUsername(_ context.Context, username string) (models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	users, err := s.readAll()
+	if err != nil {
+		return models.User{}, err
+	}
+	for _, u := range users {
+		if u.Username == username {
+			return u, nil
+		}
+	}
+	return models.User{}, fmt.Errorf("username %q: %w", username, ErrNotFound)
+}
+
 // Update overwrites the stored user record. Returns ErrNotFound if absent.
-// Returns ErrConflict if the new email is already taken by a different user.
+// Returns ErrConflict if the new username is already taken by a different user.
 func (s *FileUserStore) Update(_ context.Context, user models.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -139,14 +156,14 @@ func (s *FileUserStore) Update(_ context.Context, user models.User) error {
 		return fmt.Errorf("user id %q: %w", user.ID, ErrNotFound)
 	}
 
-	// Email uniqueness check against all other users.
+	// Username uniqueness check against all other users.
 	existing, err := s.readAll()
 	if err != nil {
 		return err
 	}
 	for _, u := range existing {
-		if u.Email == user.Email && u.ID != user.ID {
-			return fmt.Errorf("email %q already taken: %w", user.Email, ErrConflict)
+		if u.Username == user.Username && u.ID != user.ID {
+			return fmt.Errorf("username %q already taken: %w", user.Username, ErrConflict)
 		}
 	}
 

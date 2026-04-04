@@ -23,11 +23,14 @@ var (
 
 // UserStorer defines CRUD operations for user accounts.
 type UserStorer interface {
-	// Create persists a new user. Returns ErrConflict if the email is taken.
+	// Create persists a new user. Returns ErrConflict if the username is taken.
 	Create(ctx context.Context, user models.User) error
 
 	// GetByID returns the user with the given ID. Returns ErrNotFound if absent.
 	GetByID(ctx context.Context, id string) (models.User, error)
+
+	// GetByUsername returns the user with the given username. Returns ErrNotFound if absent.
+	GetByUsername(ctx context.Context, username string) (models.User, error)
 
 	// GetByEmail returns the user with the given email. Returns ErrNotFound if absent.
 	GetByEmail(ctx context.Context, email string) (models.User, error)

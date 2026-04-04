@@ -94,14 +94,14 @@ func TestFileUserStore_Create_DuplicateID(t *testing.T) {
 	assert.True(t, errors.Is(err, store.ErrConflict), "expected ErrConflict, got %v", err)
 }
 
-func TestFileUserStore_Create_DuplicateEmail(t *testing.T) {
+func TestFileUserStore_Create_DuplicateUsername(t *testing.T) {
 	t.Parallel()
 	s := newUserStore(t)
 	u := testutil.MakeUser()
 	require.NoError(t, s.Create(context.Background(), u))
 
-	// Different ID, same email → ErrConflict
-	dup := testutil.MakeUser(func(x *models.User) { x.Email = u.Email })
+	// Different ID, same username → ErrConflict
+	dup := testutil.MakeUser(func(x *models.User) { x.Username = u.Username })
 	err := s.Create(context.Background(), dup)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, store.ErrConflict), "expected ErrConflict, got %v", err)
@@ -169,6 +169,30 @@ func TestFileUserStore_GetByEmail_IgnoresOtherUsers(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// GetByUsername
+// ---------------------------------------------------------------------------
+
+func TestFileUserStore_GetByUsername_Found(t *testing.T) {
+	t.Parallel()
+	s := newUserStore(t)
+	u := testutil.MakeUser()
+	require.NoError(t, s.Create(context.Background(), u))
+
+	got, err := s.GetByUsername(context.Background(), u.Username)
+	require.NoError(t, err)
+	assert.Equal(t, u, got)
+}
+
+func TestFileUserStore_GetByUsername_NotFound(t *testing.T) {
+	t.Parallel()
+	s := newUserStore(t)
+
+	_, err := s.GetByUsername(context.Background(), "nonexistent")
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, store.ErrNotFound), "expected ErrNotFound, got %v", err)
+}
+
+// ---------------------------------------------------------------------------
 // Update
 // ---------------------------------------------------------------------------
 
@@ -198,7 +222,7 @@ func TestFileUserStore_Update_NotFound(t *testing.T) {
 	assert.True(t, errors.Is(err, store.ErrNotFound), "expected ErrNotFound, got %v", err)
 }
 
-func TestFileUserStore_Update_EmailConflictWithOtherUser(t *testing.T) {
+func TestFileUserStore_Update_UsernameConflictWithOtherUser(t *testing.T) {
 	t.Parallel()
 	s := newUserStore(t)
 	u1 := testutil.MakeUser()
@@ -206,16 +230,16 @@ func TestFileUserStore_Update_EmailConflictWithOtherUser(t *testing.T) {
 	require.NoError(t, s.Create(context.Background(), u1))
 	require.NoError(t, s.Create(context.Background(), u2))
 
-	// Try to assign u1's email to u2
-	u2.Email = u1.Email
+	// Try to assign u1's username to u2
+	u2.Username = u1.Username
 	err := s.Update(context.Background(), u2)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, store.ErrConflict), "expected ErrConflict, got %v", err)
 }
 
-func TestFileUserStore_Update_SameEmailAllowed(t *testing.T) {
+func TestFileUserStore_Update_SameUsernameAllowed(t *testing.T) {
 	t.Parallel()
-	// Updating a user without changing the email must succeed.
+	// Updating a user without changing the username must succeed.
 	s := newUserStore(t)
 	u := testutil.MakeUser()
 	require.NoError(t, s.Create(context.Background(), u))

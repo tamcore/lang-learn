@@ -27,6 +27,9 @@ func (m *mockUserStorer) GetByID(_ context.Context, _ string) (models.User, erro
 func (m *mockUserStorer) GetByEmail(_ context.Context, _ string) (models.User, error) {
 	return models.User{}, nil
 }
+func (m *mockUserStorer) GetByUsername(_ context.Context, _ string) (models.User, error) {
+	return models.User{}, nil
+}
 func (m *mockUserStorer) Update(_ context.Context, _ models.User) error { return nil }
 func (m *mockUserStorer) Delete(_ context.Context, _ string) error      { return nil }
 func (m *mockUserStorer) List(_ context.Context) ([]models.User, error) { return nil, nil }
