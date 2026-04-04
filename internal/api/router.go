@@ -44,9 +44,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
+	// Auth rate limiter: 20 requests per minute per IP
+	authRL := RateLimit(20, time.Minute)
+
 	r.Route("/api", func(r chi.Router) {
-		// Public auth endpoints
+		// Public auth endpoints (rate limited)
 		r.Route("/auth", func(r chi.Router) {
+			r.Use(authRL)
 			r.Post("/register", authH.Register)
 			r.Post("/login", authH.Login)
 			r.Post("/refresh", authH.Refresh)
