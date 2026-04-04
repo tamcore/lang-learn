@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // LLMClient calls the OpenRouter chat completions API.
@@ -20,7 +21,7 @@ type LLMClient struct {
 // NewLLMClient creates an LLM client.
 func NewLLMClient(apiKey, model string) *LLMClient {
 	if model == "" {
-		model = "google/gemini-2.5-flash-preview"
+		model = "qwen/qwen3-coder:free"
 	}
 	return &LLMClient{
 		apiKey:  apiKey,
@@ -49,6 +50,7 @@ type chatResponse struct {
 }
 
 // Complete sends a prompt to the LLM and returns the response content.
+// Retries on 429 rate limit errors with exponential backoff.
 func (c *LLMClient) Complete(ctx context.Context, prompt string) (string, error) {
 	body, err := json.Marshal(chatRequest{
 		Model:    c.model,
@@ -58,36 +60,57 @@ func (c *LLMClient) Complete(ctx context.Context, prompt string) (string, error)
 		return "", fmt.Errorf("llm: marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("llm: create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	var lastErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt)) * time.Second
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("llm: send request: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
+		if err != nil {
+			return "", fmt.Errorf("llm: create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("llm: read response: %w", err)
+		resp, err := c.client.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("llm: send request: %w", err)
+			continue
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if err != nil {
+			lastErr = fmt.Errorf("llm: read response: %w", err)
+			continue
+		}
+
+		if resp.StatusCode == 429 {
+			lastErr = fmt.Errorf("llm: rate limited (attempt %d)", attempt+1)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("llm: status %d: %s", resp.StatusCode, string(respBody))
+		}
+
+		var chatResp chatResponse
+		if err := json.Unmarshal(respBody, &chatResp); err != nil {
+			return "", fmt.Errorf("llm: parse response: %w", err)
+		}
+
+		if len(chatResp.Choices) == 0 {
+			return "", fmt.Errorf("llm: no choices in response")
+		}
+
+		return chatResp.Choices[0].Message.Content, nil
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("llm: status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var chatResp chatResponse
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return "", fmt.Errorf("llm: parse response: %w", err)
-	}
-
-	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("llm: no choices in response")
-	}
-
-	return chatResp.Choices[0].Message.Content, nil
+	return "", lastErr
 }

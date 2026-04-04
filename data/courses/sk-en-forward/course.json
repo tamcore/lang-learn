@@ -1,0 +1,571 @@
+{
+  "id": "sk-en-forward",
+  "title": "Slovak → English (Travel Basics)",
+  "description": "Learn essential English phrases from Slovak",
+  "source_lang": "sk",
+  "target_lang": "en",
+  "direction": "forward",
+  "perspective": "male",
+  "blueprint_id": "travel-basics-v1",
+  "lesson_count": 3,
+  "created_at": "2026-04-04T08:01:29.740396Z",
+  "generated_at": "2026-04-04T08:01:29.740396Z",
+  "generated_by": "philipp",
+  "lessons": [
+    {
+      "id": "sk-en-forward-L1",
+      "course_id": "sk-en-forward",
+      "sequence": 1,
+      "title": "Greetings \u0026 Introductions",
+      "turns": [
+        {
+          "id": "sk-en-forward-L1-T1",
+          "sequence": 1,
+          "speaker": "system",
+          "text": "Dobrý deň! Vitajte na prvej lekcii.",
+          "translation": "Hello! Welcome to the first lesson.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T2",
+          "sequence": 2,
+          "speaker": "system",
+          "text": "Dnes sa naučíte základné pozdravy v angličtine.",
+          "translation": "Today you will learn basic greetings in English.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T3",
+          "sequence": 3,
+          "speaker": "system",
+          "text": "Hello.",
+          "translation": "Ahoj.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T4",
+          "sequence": 4,
+          "speaker": "user",
+          "text": "Hello.",
+          "translation": "Ahoj.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T5",
+          "sequence": 5,
+          "speaker": "system",
+          "text": "Good morning.",
+          "translation": "Dobré ráno.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T6",
+          "sequence": 6,
+          "speaker": "user",
+          "text": "Good morning.",
+          "translation": "Dobré ráno.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T7",
+          "sequence": 7,
+          "speaker": "system",
+          "text": "My name is...",
+          "translation": "Volám sa...",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T8",
+          "sequence": 8,
+          "speaker": "user",
+          "text": "My name is...",
+          "translation": "Volám sa...",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T9",
+          "sequence": 9,
+          "speaker": "system",
+          "text": "How are you?",
+          "translation": "Ako sa máte?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T10",
+          "sequence": 10,
+          "speaker": "user",
+          "text": "How are you?",
+          "translation": "Ako sa máte?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T11",
+          "sequence": 11,
+          "speaker": "system",
+          "text": "I'm fine, thank you.",
+          "translation": "Mám sa dobre, ďakujem.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T12",
+          "sequence": 12,
+          "speaker": "user",
+          "text": "I'm fine, thank you.",
+          "translation": "Mám sa dobre, ďakujem.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T13",
+          "sequence": 13,
+          "speaker": "system",
+          "text": "Nice to meet you.",
+          "translation": "Teší ma.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T14",
+          "sequence": 14,
+          "speaker": "user",
+          "text": "Nice to meet you.",
+          "translation": "Teší ma.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T15",
+          "sequence": 15,
+          "speaker": "system",
+          "text": "Goodbye.",
+          "translation": "Dovidenia.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L1-T16",
+          "sequence": 16,
+          "speaker": "user",
+          "text": "Goodbye.",
+          "translation": "Dovidenia.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        }
+      ],
+      "created_at": "2026-04-04T08:01:29.740396Z"
+    },
+    {
+      "id": "sk-en-forward-L2",
+      "course_id": "sk-en-forward",
+      "sequence": 2,
+      "title": "Asking for Help",
+      "turns": [
+        {
+          "id": "sk-en-forward-L2-T1",
+          "sequence": 1,
+          "speaker": "system",
+          "text": "Dobrý deň! Poďme si zopakovať z minulej lekcie.",
+          "translation": "Hello! Let's review from the last lesson.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T2",
+          "sequence": 2,
+          "speaker": "user",
+          "text": "Hello. How are you?",
+          "translation": "Ahoj. Ako sa máte?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T3",
+          "sequence": 3,
+          "speaker": "system",
+          "text": "Výborne! Dnes sa naučíme ako požiadať o pomoc.",
+          "translation": "Excellent! Today we'll learn how to ask for help.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T4",
+          "sequence": 4,
+          "speaker": "system",
+          "text": "Excuse me.",
+          "translation": "Prepáčte.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T5",
+          "sequence": 5,
+          "speaker": "user",
+          "text": "Excuse me.",
+          "translation": "Prepáčte.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T6",
+          "sequence": 6,
+          "speaker": "system",
+          "text": "Can you help me?",
+          "translation": "Môžete mi pomôcť?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T7",
+          "sequence": 7,
+          "speaker": "user",
+          "text": "Can you help me?",
+          "translation": "Môžete mi pomôcť?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T8",
+          "sequence": 8,
+          "speaker": "system",
+          "text": "I don't understand.",
+          "translation": "Nerozumiem.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T9",
+          "sequence": 9,
+          "speaker": "user",
+          "text": "I don't understand.",
+          "translation": "Nerozumiem.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T10",
+          "sequence": 10,
+          "speaker": "system",
+          "text": "Could you repeat that?",
+          "translation": "Mohli by ste to zopakovať?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T11",
+          "sequence": 11,
+          "speaker": "user",
+          "text": "Could you repeat that?",
+          "translation": "Mohli by ste to zopakovať?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T12",
+          "sequence": 12,
+          "speaker": "system",
+          "text": "Please speak slowly.",
+          "translation": "Prosím, hovorte pomaly.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T13",
+          "sequence": 13,
+          "speaker": "user",
+          "text": "Please speak slowly.",
+          "translation": "Prosím, hovorte pomaly.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T14",
+          "sequence": 14,
+          "speaker": "system",
+          "text": "Where is...?",
+          "translation": "Kde je...?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L2-T15",
+          "sequence": 15,
+          "speaker": "user",
+          "text": "Where is...?",
+          "translation": "Kde je...?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        }
+      ],
+      "created_at": "2026-04-04T08:01:29.740396Z"
+    },
+    {
+      "id": "sk-en-forward-L3",
+      "course_id": "sk-en-forward",
+      "sequence": 3,
+      "title": "Numbers \u0026 Basics",
+      "turns": [
+        {
+          "id": "sk-en-forward-L3-T1",
+          "sequence": 1,
+          "speaker": "system",
+          "text": "Poďme si zopakovať – Excuse me, can you help me?",
+          "translation": "Let's review – Excuse me, can you help me?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T2",
+          "sequence": 2,
+          "speaker": "user",
+          "text": "Excuse me, can you help me?",
+          "translation": "Prepáčte, môžete mi pomôcť?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T3",
+          "sequence": 3,
+          "speaker": "system",
+          "text": "Dnes sa naučíme čísla a základné frázy.",
+          "translation": "Today we'll learn numbers and basic phrases.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T4",
+          "sequence": 4,
+          "speaker": "system",
+          "text": "One, two, three.",
+          "translation": "Jeden, dva, tri.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T5",
+          "sequence": 5,
+          "speaker": "user",
+          "text": "One, two, three.",
+          "translation": "Jeden, dva, tri.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T6",
+          "sequence": 6,
+          "speaker": "system",
+          "text": "Four, five.",
+          "translation": "Štyri, päť.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T7",
+          "sequence": 7,
+          "speaker": "user",
+          "text": "Four, five.",
+          "translation": "Štyri, päť.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T8",
+          "sequence": 8,
+          "speaker": "system",
+          "text": "How much is this?",
+          "translation": "Koľko to stojí?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T9",
+          "sequence": 9,
+          "speaker": "user",
+          "text": "How much is this?",
+          "translation": "Koľko to stojí?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T10",
+          "sequence": 10,
+          "speaker": "system",
+          "text": "Yes.",
+          "translation": "Áno.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T11",
+          "sequence": 11,
+          "speaker": "user",
+          "text": "Yes.",
+          "translation": "Áno.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T12",
+          "sequence": 12,
+          "speaker": "system",
+          "text": "No.",
+          "translation": "Nie.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T13",
+          "sequence": 13,
+          "speaker": "user",
+          "text": "No.",
+          "translation": "Nie.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T14",
+          "sequence": 14,
+          "speaker": "system",
+          "text": "Please.",
+          "translation": "Prosím.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T15",
+          "sequence": 15,
+          "speaker": "user",
+          "text": "Please.",
+          "translation": "Prosím.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T16",
+          "sequence": 16,
+          "speaker": "system",
+          "text": "Thank you.",
+          "translation": "Ďakujem.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "sk-en-forward-L3-T17",
+          "sequence": 17,
+          "speaker": "user",
+          "text": "Thank you.",
+          "translation": "Ďakujem.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        }
+      ],
+      "created_at": "2026-04-04T08:01:29.740396Z"
+    }
+  ]
+}

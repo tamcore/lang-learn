@@ -1,0 +1,582 @@
+{
+  "id": "de-en-reverse",
+  "title": "German → English (Travel Basics)",
+  "description": "Learn essential English phrases from German",
+  "source_lang": "de",
+  "target_lang": "en",
+  "direction": "reverse",
+  "perspective": "male",
+  "blueprint_id": "travel-basics-v1",
+  "lesson_count": 3,
+  "created_at": "2026-04-04T08:01:29.740396Z",
+  "generated_at": "2026-04-04T08:01:29.740396Z",
+  "generated_by": "philipp",
+  "lessons": [
+    {
+      "id": "de-en-reverse-L1",
+      "course_id": "de-en-reverse",
+      "sequence": 1,
+      "title": "Begrüßungen \u0026 Vorstellungen",
+      "turns": [
+        {
+          "id": "de-en-reverse-L1-T1",
+          "sequence": 1,
+          "speaker": "system",
+          "text": "Willkommen! Heute lernen Sie englische Begrüßungen.",
+          "translation": "Welcome! Today you'll learn English greetings.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T2",
+          "sequence": 2,
+          "speaker": "system",
+          "text": "Hello.",
+          "translation": "Hallo.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T3",
+          "sequence": 3,
+          "speaker": "user",
+          "text": "Hello.",
+          "translation": "Hallo.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T4",
+          "sequence": 4,
+          "speaker": "system",
+          "text": "Good morning.",
+          "translation": "Guten Morgen.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T5",
+          "sequence": 5,
+          "speaker": "user",
+          "text": "Good morning.",
+          "translation": "Guten Morgen.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T6",
+          "sequence": 6,
+          "speaker": "system",
+          "text": "What is your name?",
+          "translation": "Wie heißen Sie?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T7",
+          "sequence": 7,
+          "speaker": "user",
+          "text": "What is your name?",
+          "translation": "Wie heißen Sie?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T8",
+          "sequence": 8,
+          "speaker": "system",
+          "text": "My name is...",
+          "translation": "Ich heiße...",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T9",
+          "sequence": 9,
+          "speaker": "user",
+          "text": "My name is...",
+          "translation": "Ich heiße...",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T10",
+          "sequence": 10,
+          "speaker": "system",
+          "text": "How are you?",
+          "translation": "Wie geht es Ihnen?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T11",
+          "sequence": 11,
+          "speaker": "user",
+          "text": "How are you?",
+          "translation": "Wie geht es Ihnen?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T12",
+          "sequence": 12,
+          "speaker": "system",
+          "text": "Good, thank you.",
+          "translation": "Gut, danke.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T13",
+          "sequence": 13,
+          "speaker": "user",
+          "text": "Good, thank you.",
+          "translation": "Gut, danke.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T14",
+          "sequence": 14,
+          "speaker": "system",
+          "text": "Nice to meet you.",
+          "translation": "Freut mich.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T15",
+          "sequence": 15,
+          "speaker": "user",
+          "text": "Nice to meet you.",
+          "translation": "Freut mich.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T16",
+          "sequence": 16,
+          "speaker": "system",
+          "text": "Goodbye.",
+          "translation": "Auf Wiedersehen.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L1-T17",
+          "sequence": 17,
+          "speaker": "user",
+          "text": "Goodbye.",
+          "translation": "Auf Wiedersehen.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        }
+      ],
+      "created_at": "2026-04-04T08:01:29.740396Z"
+    },
+    {
+      "id": "de-en-reverse-L2",
+      "course_id": "de-en-reverse",
+      "sequence": 2,
+      "title": "Um Hilfe bitten",
+      "turns": [
+        {
+          "id": "de-en-reverse-L2-T1",
+          "sequence": 1,
+          "speaker": "system",
+          "text": "Wiederholung: Hello, how are you?",
+          "translation": "Review: Hello, how are you?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T2",
+          "sequence": 2,
+          "speaker": "user",
+          "text": "Hello, how are you?",
+          "translation": "Hallo, wie geht es Ihnen?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T3",
+          "sequence": 3,
+          "speaker": "system",
+          "text": "Heute lernen Sie, auf Englisch um Hilfe zu bitten.",
+          "translation": "Today you'll learn to ask for help in English.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T4",
+          "sequence": 4,
+          "speaker": "system",
+          "text": "Excuse me.",
+          "translation": "Entschuldigung.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T5",
+          "sequence": 5,
+          "speaker": "user",
+          "text": "Excuse me.",
+          "translation": "Entschuldigung.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T6",
+          "sequence": 6,
+          "speaker": "system",
+          "text": "Can you help me?",
+          "translation": "Können Sie mir helfen?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T7",
+          "sequence": 7,
+          "speaker": "user",
+          "text": "Can you help me?",
+          "translation": "Können Sie mir helfen?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T8",
+          "sequence": 8,
+          "speaker": "system",
+          "text": "I don't understand.",
+          "translation": "Ich verstehe nicht.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T9",
+          "sequence": 9,
+          "speaker": "user",
+          "text": "I don't understand.",
+          "translation": "Ich verstehe nicht.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T10",
+          "sequence": 10,
+          "speaker": "system",
+          "text": "Could you repeat that?",
+          "translation": "Können Sie das wiederholen?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T11",
+          "sequence": 11,
+          "speaker": "user",
+          "text": "Could you repeat that?",
+          "translation": "Können Sie das wiederholen?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T12",
+          "sequence": 12,
+          "speaker": "system",
+          "text": "Please speak slowly.",
+          "translation": "Sprechen Sie langsam, bitte.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T13",
+          "sequence": 13,
+          "speaker": "user",
+          "text": "Please speak slowly.",
+          "translation": "Sprechen Sie langsam, bitte.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T14",
+          "sequence": 14,
+          "speaker": "system",
+          "text": "Where is...?",
+          "translation": "Wo ist...?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L2-T15",
+          "sequence": 15,
+          "speaker": "user",
+          "text": "Where is...?",
+          "translation": "Wo ist...?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        }
+      ],
+      "created_at": "2026-04-04T08:01:29.740396Z"
+    },
+    {
+      "id": "de-en-reverse-L3",
+      "course_id": "de-en-reverse",
+      "sequence": 3,
+      "title": "Zahlen \u0026 Grundlagen",
+      "turns": [
+        {
+          "id": "de-en-reverse-L3-T1",
+          "sequence": 1,
+          "speaker": "system",
+          "text": "Wiederholung: Excuse me, can you help me?",
+          "translation": "Review: Entschuldigung, können Sie mir helfen?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T2",
+          "sequence": 2,
+          "speaker": "user",
+          "text": "Excuse me, can you help me?",
+          "translation": "Entschuldigung, können Sie mir helfen?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T3",
+          "sequence": 3,
+          "speaker": "system",
+          "text": "Heute: Englische Zahlen und grundlegende Phrasen.",
+          "translation": "Today: English numbers and basic phrases.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T4",
+          "sequence": 4,
+          "speaker": "system",
+          "text": "One, two, three.",
+          "translation": "Eins, zwei, drei.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T5",
+          "sequence": 5,
+          "speaker": "user",
+          "text": "One, two, three.",
+          "translation": "Eins, zwei, drei.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T6",
+          "sequence": 6,
+          "speaker": "system",
+          "text": "Four, five.",
+          "translation": "Vier, fünf.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T7",
+          "sequence": 7,
+          "speaker": "user",
+          "text": "Four, five.",
+          "translation": "Vier, fünf.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T8",
+          "sequence": 8,
+          "speaker": "system",
+          "text": "How much is this?",
+          "translation": "Was kostet das?",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T9",
+          "sequence": 9,
+          "speaker": "user",
+          "text": "How much is this?",
+          "translation": "Was kostet das?",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T10",
+          "sequence": 10,
+          "speaker": "system",
+          "text": "Yes.",
+          "translation": "Ja.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T11",
+          "sequence": 11,
+          "speaker": "user",
+          "text": "Yes.",
+          "translation": "Ja.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T12",
+          "sequence": 12,
+          "speaker": "system",
+          "text": "No.",
+          "translation": "Nein.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T13",
+          "sequence": 13,
+          "speaker": "user",
+          "text": "No.",
+          "translation": "Nein.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T14",
+          "sequence": 14,
+          "speaker": "system",
+          "text": "Please.",
+          "translation": "Bitte.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T15",
+          "sequence": 15,
+          "speaker": "user",
+          "text": "Please.",
+          "translation": "Bitte.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T16",
+          "sequence": 16,
+          "speaker": "system",
+          "text": "Thank you.",
+          "translation": "Danke.",
+          "audio_file": "",
+          "is_blurred": false,
+          "spaced_repeat": false,
+          "delay_after_ms": 2000
+        },
+        {
+          "id": "de-en-reverse-L3-T17",
+          "sequence": 17,
+          "speaker": "user",
+          "text": "Thank you.",
+          "translation": "Danke.",
+          "audio_file": "",
+          "is_blurred": true,
+          "spaced_repeat": true,
+          "delay_after_ms": 2000
+        }
+      ],
+      "created_at": "2026-04-04T08:01:29.740396Z"
+    }
+  ]
+}

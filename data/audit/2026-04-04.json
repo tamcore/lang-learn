@@ -1,0 +1,54 @@
+[
+  {
+    "id": "seed-sk-en-forward",
+    "timestamp": "2026-04-04T08:01:29.740396Z",
+    "action": "course.generated",
+    "actor_id": "philipp",
+    "target_id": "sk-en-forward",
+    "target_type": "course",
+    "meta": {
+      "seeded": true,
+      "source": "sk",
+      "target": "en"
+    }
+  },
+  {
+    "id": "seed-en-sk-reverse",
+    "timestamp": "2026-04-04T08:01:29.740396Z",
+    "action": "course.generated",
+    "actor_id": "philipp",
+    "target_id": "en-sk-reverse",
+    "target_type": "course",
+    "meta": {
+      "seeded": true,
+      "source": "en",
+      "target": "sk"
+    }
+  },
+  {
+    "id": "seed-en-de-forward",
+    "timestamp": "2026-04-04T08:01:29.740396Z",
+    "action": "course.generated",
+    "actor_id": "philipp",
+    "target_id": "en-de-forward",
+    "target_type": "course",
+    "meta": {
+      "seeded": true,
+      "source": "en",
+      "target": "de"
+    }
+  },
+  {
+    "id": "seed-de-en-reverse",
+    "timestamp": "2026-04-04T08:01:29.740396Z",
+    "action": "course.generated",
+    "actor_id": "philipp",
+    "target_id": "de-en-reverse",
+    "target_type": "course",
+    "meta": {
+      "seeded": true,
+      "source": "de",
+      "target": "en"
+    }
+  }
+]
