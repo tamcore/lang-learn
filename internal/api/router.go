@@ -94,6 +94,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 				genH := NewGenerateHandler(cfg.Gen)
 				r.Post("/admin/courses/generate", genH.Generate)
 				r.Get("/admin/courses/generate/{jobID}", genH.GetJobStatus)
+				r.Post("/admin/courses/{id}/audio", genH.GenerateAudio)
 			}
 
 			r.Get("/admin/audit", adminH.GetAudit)

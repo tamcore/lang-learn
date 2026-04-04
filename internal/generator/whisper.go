@@ -3,14 +3,15 @@ package generator
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 )
 
-// WhisperClient transcribes audio via an OpenAI-compatible Whisper API.
+// WhisperClient transcribes audio via OpenRouter's chat completions API
+// using a model with audio input modality.
 type WhisperClient struct {
 	apiKey  string
 	model   string
@@ -18,13 +19,14 @@ type WhisperClient struct {
 	client  *http.Client
 }
 
-// NewWhisperClient creates a Whisper transcription client.
+// NewWhisperClient creates a transcription client using OpenRouter chat completions
+// with audio input modality.
 func NewWhisperClient(apiKey, model, baseURL string) *WhisperClient {
 	if model == "" {
-		model = "whisper-1"
+		model = "google/gemini-2.5-flash"
 	}
 	if baseURL == "" {
-		baseURL = "https://api.openai.com/v1"
+		baseURL = "https://openrouter.ai/api/v1"
 	}
 	return &WhisperClient{
 		apiKey:  apiKey,
@@ -34,36 +36,72 @@ func NewWhisperClient(apiKey, model, baseURL string) *WhisperClient {
 	}
 }
 
-type whisperResponse struct {
+type whisperChatRequest struct {
+	Model    string           `json:"model"`
+	Messages []whisperChatMsg `json:"messages"`
+}
+
+type whisperChatMsg struct {
+	Role    string        `json:"role"`
+	Content []interface{} `json:"content"`
+}
+
+type whisperTextContent struct {
+	Type string `json:"type"`
 	Text string `json:"text"`
 }
 
-// Transcribe sends audio bytes to the Whisper API and returns the transcription.
+type whisperAudioContent struct {
+	Type       string            `json:"type"`
+	InputAudio whisperInputAudio `json:"input_audio"`
+}
+
+type whisperInputAudio struct {
+	Data   string `json:"data"`
+	Format string `json:"format"`
+}
+
+type whisperChatResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// Transcribe sends audio bytes to the OpenRouter chat completions API and returns the transcription.
 func (c *WhisperClient) Transcribe(ctx context.Context, audio []byte) (string, error) {
-	var buf bytes.Buffer
-	w := multipart.NewWriter(&buf)
+	b64Audio := base64.StdEncoding.EncodeToString(audio)
 
-	if err := w.WriteField("model", c.model); err != nil {
-		return "", fmt.Errorf("whisper: write model field: %w", err)
+	reqBody := whisperChatRequest{
+		Model: c.model,
+		Messages: []whisperChatMsg{
+			{
+				Role: "user",
+				Content: []interface{}{
+					whisperTextContent{Type: "text", Text: "Transcribe the following audio exactly. Return only the transcribed text, nothing else."},
+					whisperAudioContent{
+						Type: "input_audio",
+						InputAudio: whisperInputAudio{
+							Data:   b64Audio,
+							Format: "webm",
+						},
+					},
+				},
+			},
+		},
 	}
 
-	part, err := w.CreateFormFile("file", "audio.webm")
+	body, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("whisper: create form file: %w", err)
-	}
-	if _, err := part.Write(audio); err != nil {
-		return "", fmt.Errorf("whisper: write audio data: %w", err)
+		return "", fmt.Errorf("whisper: marshal request: %w", err)
 	}
 
-	if err := w.Close(); err != nil {
-		return "", fmt.Errorf("whisper: close writer: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/audio/transcriptions", &buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("whisper: create request: %w", err)
 	}
-	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 
 	resp, err := c.client.Do(req)
@@ -81,10 +119,14 @@ func (c *WhisperClient) Transcribe(ctx context.Context, audio []byte) (string, e
 		return "", fmt.Errorf("whisper: status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var whisperResp whisperResponse
-	if err := json.Unmarshal(respBody, &whisperResp); err != nil {
+	var chatResp whisperChatResponse
+	if err := json.Unmarshal(respBody, &chatResp); err != nil {
 		return "", fmt.Errorf("whisper: parse response: %w", err)
 	}
 
-	return whisperResp.Text, nil
+	if len(chatResp.Choices) == 0 {
+		return "", fmt.Errorf("whisper: no choices in response")
+	}
+
+	return chatResp.Choices[0].Message.Content, nil
 }

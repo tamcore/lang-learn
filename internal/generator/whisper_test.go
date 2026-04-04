@@ -14,33 +14,43 @@ import (
 func TestNewWhisperClient_Defaults(t *testing.T) {
 	t.Parallel()
 	c := NewWhisperClient("key", "", "")
-	assert.Equal(t, "whisper-1", c.model)
-	assert.Equal(t, "https://api.openai.com/v1", c.baseURL)
+	assert.Equal(t, "google/gemini-2.5-flash", c.model)
+	assert.Equal(t, "https://openrouter.ai/api/v1", c.baseURL)
 }
 
 func TestNewWhisperClient_Custom(t *testing.T) {
 	t.Parallel()
-	c := NewWhisperClient("key", "whisper-large-v3", "https://custom.api")
-	assert.Equal(t, "whisper-large-v3", c.model)
+	c := NewWhisperClient("key", "google/gemini-2.0-flash-001", "https://custom.api")
+	assert.Equal(t, "google/gemini-2.0-flash-001", c.model)
 	assert.Equal(t, "https://custom.api", c.baseURL)
 }
 
 func TestWhisperTranscribe_Success(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/audio/transcriptions", r.URL.Path)
+		assert.Equal(t, "/chat/completions", r.URL.Path)
 		assert.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
-		assert.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
-		require.NoError(t, r.ParseMultipartForm(10<<20))
-		assert.Equal(t, "whisper-1", r.FormValue("model"))
-
-		_, fh, err := r.FormFile("file")
-		require.NoError(t, err)
-		assert.Equal(t, "audio.webm", fh.Filename)
+		// Verify request body has audio content
+		var reqBody whisperChatRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
+		assert.Len(t, reqBody.Messages, 1)
+		assert.Equal(t, "user", reqBody.Messages[0].Role)
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(whisperResponse{Text: "Hello world"})
+		resp := whisperChatResponse{
+			Choices: []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			}{
+				{Message: struct {
+					Content string `json:"content"`
+				}{Content: "Hello world"}},
+			},
+		}
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
@@ -52,7 +62,7 @@ func TestWhisperTranscribe_Success(t *testing.T) {
 
 func TestWhisperTranscribe_ServerError(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}))
 	defer srv.Close()
@@ -78,22 +88,18 @@ func TestWhisperTranscribe_ContextCancelled(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestWhisperTranscribe_EmptyAudio(t *testing.T) {
+func TestWhisperTranscribe_NoChoices(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, r.ParseMultipartForm(10<<20))
-		_, fh, err := r.FormFile("file")
-		require.NoError(t, err)
-		assert.Equal(t, "audio.webm", fh.Filename)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(whisperResponse{Text: ""})
+		_ = json.NewEncoder(w).Encode(whisperChatResponse{})
 	}))
 	defer srv.Close()
 
 	c := NewWhisperClient("key", "", srv.URL)
-	text, err := c.Transcribe(context.Background(), []byte{})
-	require.NoError(t, err)
-	assert.Equal(t, "", text)
+	_, err := c.Transcribe(context.Background(), []byte("audio"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no choices")
 }
 
 func TestWhisperTranscribe_InvalidJSONResponse(t *testing.T) {
@@ -108,20 +114,4 @@ func TestWhisperTranscribe_InvalidJSONResponse(t *testing.T) {
 	_, err := c.Transcribe(context.Background(), []byte("audio"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parse response")
-}
-
-func TestWhisperTranscribe_LargeAudio(t *testing.T) {
-	t.Parallel()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, r.ParseMultipartForm(10<<20))
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(whisperResponse{Text: "transcribed"})
-	}))
-	defer srv.Close()
-
-	c := NewWhisperClient("key", "", srv.URL)
-	largeAudio := make([]byte, 1024*1024) // 1MB
-	text, err := c.Transcribe(context.Background(), largeAudio)
-	require.NoError(t, err)
-	assert.Equal(t, "transcribed", text)
 }

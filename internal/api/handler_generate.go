@@ -76,3 +76,26 @@ func (h *GenerateHandler) GetJobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, job)
 }
+
+// GenerateAudio handles POST /api/admin/courses/{id}/audio.
+// Generates TTS audio for all system turns of an existing course.
+func (h *GenerateHandler) GenerateAudio(w http.ResponseWriter, r *http.Request) {
+	courseID := chi.URLParam(r, "id")
+	if courseID == "" {
+		writeError(w, http.StatusBadRequest, "course id is required")
+		return
+	}
+
+	actorID := ""
+	if claims, ok := auth.ClaimsFromContext(r.Context()); ok {
+		actorID = claims.UserID
+	}
+
+	jobID, err := h.gen.GenerateAudio(courseID, actorID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]string{"job_id": jobID})
+}

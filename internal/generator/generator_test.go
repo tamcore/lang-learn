@@ -414,8 +414,7 @@ func TestRun_FullPipeline_WithTTS(t *testing.T) {
 	defer llmSrv.Close()
 
 	ttsSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("fake-mp3"))
+		sseAudioResponse(w, []byte("fake-wav-audio"))
 	}))
 	defer ttsSrv.Close()
 
@@ -458,7 +457,7 @@ func TestRun_FullPipeline_WithTTS(t *testing.T) {
 		audioPath := filepath.Join(dataDir, "courses", course.ID, turn.AudioFile)
 		data, err := os.ReadFile(audioPath)
 		require.NoError(t, err)
-		assert.Equal(t, []byte("fake-mp3"), data)
+		assert.Equal(t, []byte("fake-wav-audio"), data)
 	}
 }
 

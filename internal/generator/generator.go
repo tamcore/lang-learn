@@ -229,7 +229,7 @@ func (g *Generator) run(jobID string, req GenerateRequest) {
 					if turn.Speaker != models.SpeakerSystem || turn.Text == "" {
 						continue
 					}
-					filename := fmt.Sprintf("%s.mp3", turn.ID)
+					filename := fmt.Sprintf("%s.wav", turn.ID)
 					data, ttsErr := g.tts.Synthesize(ctx, turn.Text)
 					if ttsErr != nil {
 						slog.Warn("tts failed for turn", "turn", turn.ID, "err", ttsErr)
@@ -265,6 +265,114 @@ func (g *Generator) run(jobID string, req GenerateRequest) {
 
 	g.updateJob(jobID, "completed", 1.0, courseID, "")
 	slog.Info("course generation complete", "job", jobID, "course", courseID)
+}
+
+// GenerateAudio generates TTS audio for all system turns of an existing course.
+// Skips turns that already have audio files on disk. Returns job ID for tracking.
+func (g *Generator) GenerateAudio(courseID, actorID string) (string, error) {
+	if g.tts == nil {
+		return "", fmt.Errorf("TTS not configured (set DEFAULT_TTS_MODEL)")
+	}
+
+	course, err := g.courses.GetByID(context.Background(), courseID)
+	if err != nil {
+		return "", fmt.Errorf("course not found: %w", err)
+	}
+
+	jobID := fmt.Sprintf("audio-%d", time.Now().UnixNano())
+	g.jobs.Store(jobID, JobStatus{
+		ID:        jobID,
+		Status:    "pending",
+		CourseID:  courseID,
+		CreatedAt: time.Now().UTC(),
+	})
+
+	go g.runAudio(jobID, course, actorID)
+	return jobID, nil
+}
+
+func (g *Generator) runAudio(jobID string, course models.Course, actorID string) {
+	g.updateJob(jobID, "running", 0, course.ID, "")
+	ctx := context.Background()
+
+	audioDir := filepath.Join(g.dataDir, "courses", course.ID, "audio")
+	if err := os.MkdirAll(audioDir, 0o755); err != nil {
+		g.updateJob(jobID, "failed", 0, course.ID, "create audio dir: "+err.Error())
+		return
+	}
+
+	// Count total system turns to track progress
+	var totalTurns, doneTurns int
+	for _, lesson := range course.Lessons {
+		for _, turn := range lesson.Turns {
+			if turn.Speaker == models.SpeakerSystem && turn.Text != "" {
+				totalTurns++
+			}
+		}
+	}
+
+	modified := false
+	for li := range course.Lessons {
+		for ti := range course.Lessons[li].Turns {
+			turn := &course.Lessons[li].Turns[ti]
+			if turn.Speaker != models.SpeakerSystem || turn.Text == "" {
+				continue
+			}
+
+			filename := fmt.Sprintf("%s.wav", turn.ID)
+			filePath := filepath.Join(audioDir, filename)
+
+			// Skip if audio already exists on disk
+			if _, err := os.Stat(filePath); err == nil {
+				doneTurns++
+				if totalTurns > 0 {
+					g.updateJob(jobID, "running", float64(doneTurns)/float64(totalTurns), course.ID, "")
+				}
+				continue
+			}
+
+			slog.Info("generating audio", "job", jobID, "turn", turn.ID, "text", turn.Text[:min(40, len(turn.Text))])
+			data, ttsErr := g.tts.Synthesize(ctx, turn.Text)
+			if ttsErr != nil {
+				slog.Warn("tts failed for turn", "turn", turn.ID, "err", ttsErr)
+				doneTurns++
+				continue
+			}
+
+			if writeErr := os.WriteFile(filePath, data, 0o644); writeErr != nil {
+				slog.Warn("failed to write audio", "turn", turn.ID, "err", writeErr)
+				doneTurns++
+				continue
+			}
+
+			turn.AudioFile = course.ID + "/audio/" + filename
+			modified = true
+			doneTurns++
+			if totalTurns > 0 {
+				g.updateJob(jobID, "running", float64(doneTurns)/float64(totalTurns), course.ID, "")
+			}
+		}
+	}
+
+	// Update the course JSON if any audio files were added
+	if modified {
+		if err := g.courses.Update(ctx, course); err != nil {
+			slog.Warn("failed to update course with audio paths", "err", err)
+		}
+	}
+
+	_ = g.audit.Append(ctx, models.AuditEntry{
+		ID:         fmt.Sprintf("audit-%d", time.Now().UnixNano()),
+		Timestamp:  time.Now().UTC(),
+		Action:     "audio_generated",
+		ActorID:    actorID,
+		TargetID:   course.ID,
+		TargetType: "course",
+		Meta:       map[string]any{"total_turns": totalTurns, "generated": doneTurns},
+	})
+
+	g.updateJob(jobID, "completed", 1.0, course.ID, "")
+	slog.Info("audio generation complete", "job", jobID, "course", course.ID, "turns", doneTurns)
 }
 
 func (g *Generator) updateJob(id, status string, progress float64, courseID, errMsg string) {
