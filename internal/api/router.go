@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/user/lang-learn/internal/auth"
+	"github.com/user/lang-learn/internal/generator"
 	"github.com/user/lang-learn/internal/store"
 	"github.com/user/lang-learn/internal/web"
 )
@@ -22,6 +23,7 @@ type RouterConfig struct {
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
 	BcryptCost int
+	Gen        *generator.Generator
 }
 
 // NewRouter builds the chi router with all API routes mounted.
@@ -77,6 +79,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 			r.Get("/admin/courses", adminH.ListCourses)
 			r.Delete("/admin/courses/{id}", adminH.DeleteCourse)
+
+			if cfg.Gen != nil {
+				genH := NewGenerateHandler(cfg.Gen)
+				r.Post("/admin/courses/generate", genH.Generate)
+				r.Get("/admin/courses/generate/{jobID}", genH.GetJobStatus)
+			}
 
 			r.Get("/admin/audit", adminH.GetAudit)
 		})

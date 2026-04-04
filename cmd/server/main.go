@@ -12,6 +12,7 @@ import (
 
 	"github.com/user/lang-learn/internal/api"
 	"github.com/user/lang-learn/internal/config"
+	"github.com/user/lang-learn/internal/generator"
 	"github.com/user/lang-learn/internal/store"
 )
 
@@ -48,6 +49,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	var gen *generator.Generator
+	if cfg.OpenRouterAPIKey != "" {
+		llm := generator.NewLLMClient(cfg.OpenRouterAPIKey, "")
+		gen = generator.NewGenerator(llm, courses, audit)
+	}
+
 	router := api.NewRouter(api.RouterConfig{
 		JWTSecret:  cfg.JWTSecret,
 		Users:      users,
@@ -58,6 +65,7 @@ func main() {
 		AccessTTL:  cfg.AccessTokenTTL,
 		RefreshTTL: cfg.RefreshTokenTTL,
 		BcryptCost: cfg.BcryptCost,
+		Gen:        gen,
 	})
 
 	srv := &http.Server{

@@ -1,0 +1,256 @@
+package generator
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/user/lang-learn/internal/models"
+	"github.com/user/lang-learn/internal/store"
+)
+
+// JobStatus represents the state of a course generation job.
+type JobStatus struct {
+	ID        string    `json:"id"`
+	Status    string    `json:"status"` // "pending", "running", "completed", "failed"
+	Progress  float64   `json:"progress"`
+	CourseID  string    `json:"course_id,omitempty"`
+	Error     string    `json:"error,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Generator orchestrates course generation using LLM and TTS.
+type Generator struct {
+	llm     *LLMClient
+	courses store.CourseStorer
+	audit   store.AuditStorer
+	jobs    sync.Map
+}
+
+// NewGenerator creates a Generator.
+func NewGenerator(llm *LLMClient, courses store.CourseStorer, audit store.AuditStorer) *Generator {
+	return &Generator{llm: llm, courses: courses, audit: audit}
+}
+
+// GetJob returns the current status of a generation job.
+func (g *Generator) GetJob(id string) (JobStatus, bool) {
+	v, ok := g.jobs.Load(id)
+	if !ok {
+		return JobStatus{}, false
+	}
+	return v.(JobStatus), true
+}
+
+// GenerateRequest contains the parameters for course generation.
+type GenerateRequest struct {
+	BlueprintID string
+	SourceLang  string
+	TargetLang  string
+	Direction   models.CourseDirection
+	Perspective models.Perspective
+	LessonCount int
+	ActorID     string
+}
+
+// Generate starts an async course generation job and returns the job ID immediately.
+func (g *Generator) Generate(req GenerateRequest) string {
+	jobID := fmt.Sprintf("job-%d", time.Now().UnixNano())
+	g.jobs.Store(jobID, JobStatus{
+		ID:        jobID,
+		Status:    "pending",
+		CreatedAt: time.Now().UTC(),
+	})
+
+	go g.run(jobID, req)
+	return jobID
+}
+
+func (g *Generator) run(jobID string, req GenerateRequest) {
+	g.updateJob(jobID, "running", 0, "", "")
+	ctx := context.Background()
+
+	blueprint, ok := Blueprints()[req.BlueprintID]
+	if !ok {
+		g.updateJob(jobID, "failed", 0, "", "unknown blueprint: "+req.BlueprintID)
+		return
+	}
+
+	// Step 1: Generate lesson titles
+	slog.Info("generating lesson titles", "job", jobID)
+	outlinePrompt := BuildLessonOutlinePrompt(blueprint, req.SourceLang, req.TargetLang, req.LessonCount)
+
+	var titles []string
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		resp, llmErr := g.llm.Complete(ctx, outlinePrompt)
+		if llmErr != nil {
+			err = llmErr
+			continue
+		}
+		resp = cleanJSON(resp)
+		if jsonErr := json.Unmarshal([]byte(resp), &titles); jsonErr != nil {
+			err = fmt.Errorf("parse titles: %w (raw: %s)", jsonErr, resp)
+			continue
+		}
+		err = nil
+		break
+	}
+	if err != nil {
+		g.updateJob(jobID, "failed", 0, "", "lesson titles: "+err.Error())
+		return
+	}
+
+	g.updateJob(jobID, "running", 0.1, "", "")
+
+	// Step 2: Generate turns for each lesson
+	now := time.Now().UTC()
+	courseID := fmt.Sprintf("%s-%s-%s-%s", req.SourceLang, req.TargetLang, string(req.Direction), fmt.Sprintf("%d", now.Unix()))
+
+	langNames := map[string]string{
+		"sk": "Slovak", "en": "English", "de": "German", "es": "Spanish", "fr": "French",
+	}
+	srcName := langNames[req.SourceLang]
+	if srcName == "" {
+		srcName = req.SourceLang
+	}
+	tgtName := langNames[req.TargetLang]
+	if tgtName == "" {
+		tgtName = req.TargetLang
+	}
+
+	course := models.Course{
+		ID:          courseID,
+		Title:       fmt.Sprintf("%s → %s (%s)", srcName, tgtName, blueprint.Name),
+		Description: fmt.Sprintf("Pimsleur-style %s course: %s to %s, %s perspective", blueprint.Name, srcName, tgtName, req.Perspective),
+		SourceLang:  req.SourceLang,
+		TargetLang:  req.TargetLang,
+		Direction:   req.Direction,
+		Perspective: req.Perspective,
+		BlueprintID: req.BlueprintID,
+		LessonCount: len(titles),
+		CreatedAt:   now,
+		GeneratedAt: now,
+		GeneratedBy: req.ActorID,
+		Lessons:     make([]models.Lesson, 0, len(titles)),
+	}
+
+	for i, title := range titles {
+		slog.Info("generating lesson", "job", jobID, "lesson", i+1, "title", title)
+		progress := 0.1 + (float64(i)/float64(len(titles)))*0.8
+		g.updateJob(jobID, "running", progress, "", "")
+
+		turnsPrompt := BuildLessonTurnsPrompt(title, req.SourceLang, req.TargetLang, req.Perspective, i+1)
+
+		var turns []struct {
+			Speaker      string `json:"speaker"`
+			Text         string `json:"text"`
+			Translation  string `json:"translation"`
+			IsBlurred    bool   `json:"is_blurred"`
+			SpacedRepeat bool   `json:"spaced_repeat"`
+			DelayAfterMs int    `json:"delay_after_ms"`
+		}
+
+		for attempt := 0; attempt < 3; attempt++ {
+			resp, llmErr := g.llm.Complete(ctx, turnsPrompt)
+			if llmErr != nil {
+				err = llmErr
+				continue
+			}
+			resp = cleanJSON(resp)
+			if jsonErr := json.Unmarshal([]byte(resp), &turns); jsonErr != nil {
+				err = fmt.Errorf("parse turns for lesson %d: %w", i+1, jsonErr)
+				continue
+			}
+			err = nil
+			break
+		}
+
+		if err != nil {
+			slog.Warn("failed to generate lesson turns, using placeholder", "lesson", i+1, "err", err)
+			turns = []struct {
+				Speaker      string `json:"speaker"`
+				Text         string `json:"text"`
+				Translation  string `json:"translation"`
+				IsBlurred    bool   `json:"is_blurred"`
+				SpacedRepeat bool   `json:"spaced_repeat"`
+				DelayAfterMs int    `json:"delay_after_ms"`
+			}{
+				{Speaker: "system", Text: "Welcome to " + title, Translation: "Welcome", IsBlurred: false, DelayAfterMs: 2000},
+			}
+			err = nil
+		}
+
+		lessonID := fmt.Sprintf("%s-L%d", courseID, i+1)
+		lesson := models.Lesson{
+			ID:        lessonID,
+			CourseID:  courseID,
+			Sequence:  i + 1,
+			Title:     title,
+			CreatedAt: now,
+			Turns:     make([]models.Turn, 0, len(turns)),
+		}
+
+		for j, t := range turns {
+			turnID := fmt.Sprintf("%s-T%d", lessonID, j+1)
+			lesson.Turns = append(lesson.Turns, models.Turn{
+				ID:           turnID,
+				Sequence:     j + 1,
+				Speaker:      models.TurnSpeaker(t.Speaker),
+				Text:         t.Text,
+				Translation:  t.Translation,
+				AudioFile:    "",
+				IsBlurred:    t.IsBlurred,
+				SpacedRepeat: t.SpacedRepeat,
+				DelayAfterMs: t.DelayAfterMs,
+			})
+		}
+
+		course.Lessons = append(course.Lessons, lesson)
+	}
+
+	// Step 3: Save course
+	if err := g.courses.Create(ctx, course); err != nil {
+		g.updateJob(jobID, "failed", 0, "", "save course: "+err.Error())
+		return
+	}
+
+	// Step 4: Audit log
+	_ = g.audit.Append(ctx, models.AuditEntry{
+		ID:         fmt.Sprintf("audit-%d", time.Now().UnixNano()),
+		Timestamp:  time.Now().UTC(),
+		Action:     models.ActionCourseGenerated,
+		ActorID:    req.ActorID,
+		TargetID:   courseID,
+		TargetType: "course",
+		Meta:       map[string]any{"blueprint": req.BlueprintID, "source": req.SourceLang, "target": req.TargetLang},
+	})
+
+	g.updateJob(jobID, "completed", 1.0, courseID, "")
+	slog.Info("course generation complete", "job", jobID, "course", courseID)
+}
+
+func (g *Generator) updateJob(id, status string, progress float64, courseID, errMsg string) {
+	v, ok := g.jobs.Load(id)
+	if !ok {
+		return
+	}
+	job := v.(JobStatus)
+	job.Status = status
+	job.Progress = progress
+	job.CourseID = courseID
+	job.Error = errMsg
+	g.jobs.Store(id, job)
+}
+
+// cleanJSON strips markdown fences and leading/trailing whitespace from LLM output.
+func cleanJSON(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "```json")
+	s = strings.TrimPrefix(s, "```")
+	s = strings.TrimSuffix(s, "```")
+	return strings.TrimSpace(s)
+}
