@@ -1,4 +1,4 @@
-:root {
+:root, [data-theme="dark"] {
   --bg: #0f172a;
   --bg-card: #1e293b;
   --text: #f1f5f9;
@@ -7,8 +7,22 @@
   --primary-hover: #2563eb;
   --danger: #ef4444;
   --success: #22c55e;
+  --warning: #eab308;
   --border: #334155;
   --radius: 8px;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg-card: #ffffff;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --border: #e2e8f0;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -134,3 +148,47 @@ th, td {
 }
 
 th { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; }
+
+/* Speaking feedback */
+.speaking-feedback { margin-top: 0.5rem; }
+.speaking-controls { display: flex; gap: 0.5rem; }
+.record-btn { background: var(--primary); color: white; }
+.record-btn.recording { background: var(--danger); animation: pulse 1.5s ease-in-out infinite; }
+.submit-btn { background: var(--success); color: white; }
+.speaking-error { color: var(--danger); font-size: 0.85rem; margin-top: 0.25rem; }
+.speaking-result { margin-top: 0.5rem; }
+.score-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.score-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.score-text { font-weight: 700; margin-top: 0.25rem; }
+.feedback-text { color: var(--text-muted); font-size: 0.85rem; }
+.transcript-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+/* Theme toggle */
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* Offline banner */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--warning);
+  color: #000;
+  text-align: center;
+  padding: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 9999;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
