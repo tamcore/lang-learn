@@ -50,7 +50,7 @@ func TestRegister_DuplicateEmail(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestAuthHandler(t)
 
-	body := `{"username":"u1","email":"dup@test.com","password":"pass"}`
+	body := `{"username":"u1","email":"dup@test.com","password":"password1"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.Register(rec, req)
@@ -78,14 +78,14 @@ func TestLogin_Success(t *testing.T) {
 	h, _ := newTestAuthHandler(t)
 
 	// Register first
-	body := `{"username":"login_test","email":"login@test.com","password":"pass123"}`
+	body := `{"username":"login_test","email":"login@test.com","password":"pass1234"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.Register(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
 	// Login
-	body = `{"email":"login@test.com","password":"pass123"}`
+	body = `{"email":"login@test.com","password":"pass1234"}`
 	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
 	rec = httptest.NewRecorder()
 	h.Login(rec, req)
@@ -101,13 +101,13 @@ func TestLogin_WrongPassword(t *testing.T) {
 	t.Parallel()
 	h, _ := newTestAuthHandler(t)
 
-	body := `{"username":"u","email":"wrong@test.com","password":"correct"}`
+	body := `{"username":"u","email":"wrong@test.com","password":"correct1"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.Register(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code)
 
-	body = `{"email":"wrong@test.com","password":"incorrect"}`
+	body = `{"email":"wrong@test.com","password":"incorrec1"}`
 	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
 	rec = httptest.NewRecorder()
 	h.Login(rec, req)
@@ -130,7 +130,7 @@ func TestRefresh_Success(t *testing.T) {
 	h, _ := newTestAuthHandler(t)
 
 	// Register to get tokens
-	body := `{"username":"refresh","email":"refresh@test.com","password":"pass"}`
+	body := `{"username":"refresh","email":"refresh@test.com","password":"password1"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	h.Register(rec, req)

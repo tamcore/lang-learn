@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/user/lang-learn/internal/auth"
@@ -72,6 +73,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Username == "" || req.Email == "" || req.Password == "" {
 		writeError(w, http.StatusBadRequest, "username, email, and password are required")
+		return
+	}
+	if len(req.Password) < 8 {
+		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+	if !strings.Contains(req.Email, "@") {
+		writeError(w, http.StatusBadRequest, "invalid email address")
 		return
 	}
 

@@ -24,7 +24,7 @@ jobs:
 
       - name: Build frontend (needed for go:embed)
         run: |
-          cd frontend && npm ci && npm run build
+          (cd frontend && npm ci && npm run build)
           rm -rf internal/web/dist
           cp -r frontend/dist internal/web/dist
 
