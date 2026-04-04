@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { Lesson, Turn } from "../api/types";
 import SpeakingFeedback from "../components/lesson/SpeakingFeedback";
+import DownloadOffline from "../components/lesson/DownloadOffline";
 
 function TurnBubble({
   turn,
@@ -86,13 +87,16 @@ export default function LessonPage() {
         <Link to={`/courses/${id}`} style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
           ← Back to course
         </Link>
-        <button
-          className={`btn-primary ${autoPlay ? "btn-danger" : ""}`}
-          onClick={() => { setAutoPlay(!autoPlay); if (!autoPlay) setActiveTurn(0); }}
-          style={{ marginLeft: "auto", padding: "0.3rem 0.8rem", fontSize: "0.8rem" }}
-        >
-          {autoPlay ? "⏹ Stop" : "▶ Play Lesson"}
-        </button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <DownloadOffline courseId={id!} lesson={lesson} />
+          <button
+            className={`btn-primary ${autoPlay ? "btn-danger" : ""}`}
+            onClick={() => { setAutoPlay(!autoPlay); if (!autoPlay) setActiveTurn(0); }}
+            style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem" }}
+          >
+            {autoPlay ? "⏹ Stop" : "▶ Play Lesson"}
+          </button>
+        </div>
       </div>
       <h2 style={{ margin: "0 0 1rem" }}>{lesson.title}</h2>
       <div className="lesson-container">
