@@ -139,6 +139,16 @@ export const api = {
   deleteCourse: (id: string) =>
     request<any>(`/admin/courses/${id}`, { method: "DELETE" }),
 
+  generateCourse: (sourceLang: string, targetLang: string, direction: string, lessonCount: number) =>
+    request<any>("/admin/courses/generate", {
+      method: "POST",
+      body: JSON.stringify({ source_lang: sourceLang, target_lang: targetLang, direction, lesson_count: lessonCount }),
+    }),
+  generateAudio: (courseId: string) =>
+    request<any>(`/admin/courses/${courseId}/audio`, { method: "POST" }),
+  getJobStatus: (jobId: string) =>
+    request<any>(`/admin/courses/generate/${jobId}`),
+
   getAudit: (date?: string) =>
     request<any[]>(`/admin/audit${date ? `?date=${date}` : ""}`),
 };
