@@ -12,8 +12,8 @@ lang-learn is a self-hosted Pimsleur-style language learning PWA. Go backend, Re
 - **Frontend**: React 19, TypeScript, Vite 8, vite-plugin-pwa
 - **Storage**: File-based JSON (no database)
 - **Generation**: OpenRouter API (configurable model, default google/gemini-2.5-flash)
-- **TTS**: OpenAI-compatible API (configurable model + base URL)
-- **STT**: Whisper API (configurable model + base URL)
+- **TTS**: OpenRouter streaming chat completions with audio output modality (pcm16 → WAV wrapper)
+- **STT**: OpenRouter chat completions with audio input modality (base64 encoded)
 - **Deploy**: Docker (multi-stage, single binary with embedded frontend)
 
 ## Repository Structure
@@ -32,12 +32,13 @@ internal/
 frontend/
   src/
     api/              → API client + types
-    components/       → Reusable UI (lesson/SpeakingFeedback, admin/)
+    components/       → Reusable UI (lesson/SpeakingFeedback, lesson/DownloadOffline, admin/)
     context/          → AuthContext, ThemeContext
     db/               → IndexedDB wrapper (idb.ts) for offline
     hooks/            → useMediaRecorder, useOnline
     pages/            → LoginPage, CoursesPage, LessonPage, AdminPage
-    styles/           → CSS with dark/light theme
+    styles/           → CSS with dark/light theme + mobile responsive
+    sync/             → SyncManager for offline progress sync
 .github/workflows/    → CI (vet, test, build) + E2E (full server boot)
 ```
 
@@ -119,8 +120,24 @@ make lint             # go vet
 - `GET/PATCH/DELETE /api/admin/users/{id}` — Get/update/delete user
 - `GET/DELETE /api/admin/courses` — List/delete courses
 - `POST /api/admin/courses/generate` — Generate course via LLM
+- `POST /api/admin/courses/{id}/audio` — Generate TTS audio for existing course
 - `GET /api/admin/courses/generate/{jobID}` — Check generation job status
 - `GET /api/admin/audit` — View audit log
+
+## TTS / STT Implementation
+
+- **TTS** uses OpenRouter `/chat/completions` with `modalities: ["text", "audio"]` and `stream: true`.
+  - Format MUST be `pcm16` when streaming (wav not supported with stream=true).
+  - Raw PCM16 audio is wrapped in a 44-byte WAV header (24kHz, mono, 16-bit) for browser playback.
+  - Response is SSE with `delta.audio.data` containing base64 chunks — collect all chunks, join, base64-decode.
+  - Default model: `openai/gpt-audio-mini` ($0.60/$2.40 per M tokens).
+  - Concurrency capped at 3 via semaphore.
+  - Audio files stored as `.wav` in `data/courses/{id}/audio/{turnID}.wav`.
+- **STT** uses OpenRouter `/chat/completions` with `input_audio` content type (NOT the `/audio/transcriptions` endpoint).
+  - Sends base64-encoded audio as part of message content.
+  - Default model: `google/gemini-2.5-flash`.
+- **OpenRouter does NOT support** `/audio/speech` or `/audio/transcriptions` endpoints (returns 404 HTML).
+- `tts.go` uses `ttsChatMessage`, `ttsChatRequest`, `ttsAudioConfig` to avoid type conflicts with `llm.go`.
 
 ## Store Interface Pattern
 
@@ -141,8 +158,8 @@ All stores implement interfaces in `internal/store/store.go`:
 | `LOG_FORMAT` | `json` | Log format (json/text) |
 | `OPENROUTER_API_KEY` | (optional) | Enables LLM course generation |
 | `DEFAULT_LLM_MODEL` | `google/gemini-2.5-flash` | LLM model for course generation |
-| `DEFAULT_TTS_MODEL` | (empty = disabled) | TTS model (e.g. `tts-1`) |
-| `DEFAULT_WHISPER_MODEL` | (empty = disabled) | STT model for speaking eval |
+| `DEFAULT_TTS_MODEL` | (empty = disabled) | TTS model (e.g. `openai/gpt-audio-mini`) |
+| `DEFAULT_WHISPER_MODEL` | (empty = disabled) | STT model (e.g. `google/gemini-2.5-flash`) |
 
 ## Common Pitfalls
 

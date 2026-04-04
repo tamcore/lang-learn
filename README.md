@@ -6,13 +6,16 @@ A self-hosted, Pimsleur-style language learning PWA. Courses are generated via L
 
 - **Pimsleur method**: Progressive lesson structure with spaced repetition and recall
 - **LLM-generated courses**: Create any language pair using configurable LLM models
-- **TTS audio**: Optional text-to-speech for system turns (OpenAI-compatible API)
-- **Speaking evaluation**: Record speech, transcribe with Whisper, score pronunciation
+- **TTS audio**: Text-to-speech for system turns via OpenRouter streaming (pcm16→WAV)
+- **Speaking evaluation**: Record speech, transcribe via OpenRouter audio input, score pronunciation
 - **PWA**: Installable, offline-capable with service worker
 - **Dark/light theme**: Auto-detects system preference, toggleable
 - **Chat-bubble UI**: System and user turns displayed as conversation bubbles
 - **Audio sequencer**: Auto-play lesson with sequential audio playback
-- **Admin panel**: User management, course generation, audit log
+- **Offline sync**: Progress syncs automatically when back online
+- **Download for offline**: Pre-cache lesson audio for offline use
+- **Mobile responsive**: Touch-optimized with 768px/480px breakpoints
+- **Admin panel**: User management, course generation, audio generation, audit log
 - **No public registration**: Only admins can create users
 
 ## Quick Start
@@ -25,8 +28,8 @@ export DATA_DIR=./data
 # Optional: enables course generation
 export OPENROUTER_API_KEY=sk-or-...
 # Optional: TTS and speaking evaluation
-export DEFAULT_TTS_MODEL=tts-1
-export DEFAULT_WHISPER_MODEL=whisper-1
+export DEFAULT_TTS_MODEL=openai/gpt-audio-mini
+export DEFAULT_WHISPER_MODEL=google/gemini-2.5-flash
 EOF
 source .envrc
 
@@ -63,8 +66,8 @@ The Docker image is a single self-contained binary (~15MB) with the frontend emb
 | `LOG_FORMAT` | No | `json` | Log format: json, text |
 | `OPENROUTER_API_KEY` | No | — | Enables LLM course generation |
 | `DEFAULT_LLM_MODEL` | No | `google/gemini-2.5-flash` | LLM model for course generation |
-| `DEFAULT_TTS_MODEL` | No | — | TTS model (e.g. `tts-1`). Empty = TTS disabled |
-| `DEFAULT_WHISPER_MODEL` | No | — | STT model for speaking eval. Empty = disabled |
+| `DEFAULT_TTS_MODEL` | No | — | TTS model (e.g. `openai/gpt-audio-mini`). Empty = TTS disabled |
+| `DEFAULT_WHISPER_MODEL` | No | — | STT model (e.g. `google/gemini-2.5-flash`). Empty = disabled |
 
 ## Course Generation
 
@@ -88,6 +91,22 @@ curl -X POST http://localhost:8080/api/admin/courses/generate \
     "lesson_count": 10
   }'
 ```
+
+## Audio Generation
+
+Generate TTS audio for an existing course (requires `DEFAULT_TTS_MODEL`):
+
+```bash
+# Generate audio for a specific course
+curl -X POST http://localhost:8080/api/admin/courses/$COURSE_ID/audio \
+  -H "Authorization: Bearer $TOKEN"
+
+# Check job progress
+curl http://localhost:8080/api/admin/courses/generate/$JOB_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Or use the "🔊 Audio" button on the admin Courses tab.
 
 ## Development
 
