@@ -25,7 +25,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLogger(cfg.LogLevel)
+	setupLogger(cfg.LogLevel, cfg.LogFormat)
 
 	users, err := store.NewFileUserStore(filepath.Join(cfg.DataDir, "users"))
 	if err != nil {
@@ -55,21 +55,31 @@ func main() {
 
 	var gen *generator.Generator
 	if cfg.OpenRouterAPIKey != "" {
-		llm := generator.NewLLMClient(cfg.OpenRouterAPIKey, "")
-		gen = generator.NewGenerator(llm, courses, audit)
+		llm := generator.NewLLMClient(cfg.OpenRouterAPIKey, cfg.DefaultLLMModel)
+		var tts *generator.TTSClient
+		if cfg.DefaultTTSModel != "" {
+			tts = generator.NewTTSClient(cfg.OpenRouterAPIKey, cfg.DefaultTTSModel, "", "")
+		}
+		gen = generator.NewGenerator(llm, tts, courses, audit, cfg.DataDir)
+	}
+
+	var transcriber api.Transcriber
+	if cfg.DefaultWhisperModel != "" && cfg.OpenRouterAPIKey != "" {
+		transcriber = generator.NewWhisperClient(cfg.OpenRouterAPIKey, cfg.DefaultWhisperModel, "")
 	}
 
 	router := api.NewRouter(api.RouterConfig{
-		JWTSecret:  cfg.JWTSecret,
-		Users:      users,
-		Courses:    courses,
-		Progress:   progress,
-		Audit:      audit,
-		CoursesDir: filepath.Join(cfg.DataDir, "courses"),
-		AccessTTL:  cfg.AccessTokenTTL,
-		RefreshTTL: cfg.RefreshTokenTTL,
-		BcryptCost: cfg.BcryptCost,
-		Gen:        gen,
+		JWTSecret:   cfg.JWTSecret,
+		Users:       users,
+		Courses:     courses,
+		Progress:    progress,
+		Audit:       audit,
+		CoursesDir:  filepath.Join(cfg.DataDir, "courses"),
+		AccessTTL:   cfg.AccessTokenTTL,
+		RefreshTTL:  cfg.RefreshTokenTTL,
+		BcryptCost:  cfg.BcryptCost,
+		Gen:         gen,
+		Transcriber: transcriber,
 	})
 
 	srv := &http.Server{
@@ -103,7 +113,7 @@ func main() {
 	}
 }
 
-func setupLogger(level string) {
+func setupLogger(level, format string) {
 	var logLevel slog.Level
 	switch level {
 	case "debug":
@@ -115,7 +125,14 @@ func setupLogger(level string) {
 	default:
 		logLevel = slog.LevelInfo
 	}
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})))
+	opts := &slog.HandlerOptions{Level: logLevel}
+	var handler slog.Handler
+	if format == "text" {
+		handler = slog.NewTextHandler(os.Stdout, opts)
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, opts)
+	}
+	slog.SetDefault(slog.New(handler))
 }
 
 // bootstrapAdmin creates a default admin user if no users exist.

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -26,14 +28,16 @@ type JobStatus struct {
 // Generator orchestrates course generation using LLM and TTS.
 type Generator struct {
 	llm     *LLMClient
+	tts     *TTSClient // optional, nil disables audio generation
 	courses store.CourseStorer
 	audit   store.AuditStorer
+	dataDir string // root data directory for saving audio files
 	jobs    sync.Map
 }
 
-// NewGenerator creates a Generator.
-func NewGenerator(llm *LLMClient, courses store.CourseStorer, audit store.AuditStorer) *Generator {
-	return &Generator{llm: llm, courses: courses, audit: audit}
+// NewGenerator creates a Generator. tts may be nil to skip audio generation.
+func NewGenerator(llm *LLMClient, tts *TTSClient, courses store.CourseStorer, audit store.AuditStorer, dataDir string) *Generator {
+	return &Generator{llm: llm, tts: tts, courses: courses, audit: audit, dataDir: dataDir}
 }
 
 // GetJob returns the current status of a generation job.
@@ -212,7 +216,37 @@ func (g *Generator) run(jobID string, req GenerateRequest) {
 		course.Lessons = append(course.Lessons, lesson)
 	}
 
-	// Step 3: Save course
+	// Step 3: Generate TTS audio for system turns (if TTS client configured)
+	if g.tts != nil {
+		g.updateJob(jobID, "running", 0.9, "", "")
+		audioDir := filepath.Join(g.dataDir, "courses", courseID, "audio")
+		if err := os.MkdirAll(audioDir, 0o755); err != nil {
+			slog.Warn("failed to create audio dir", "err", err)
+		} else {
+			for li := range course.Lessons {
+				for ti := range course.Lessons[li].Turns {
+					turn := &course.Lessons[li].Turns[ti]
+					if turn.Speaker != models.SpeakerSystem || turn.Text == "" {
+						continue
+					}
+					filename := fmt.Sprintf("%s.mp3", turn.ID)
+					data, ttsErr := g.tts.Synthesize(ctx, turn.Text)
+					if ttsErr != nil {
+						slog.Warn("tts failed for turn", "turn", turn.ID, "err", ttsErr)
+						continue
+					}
+					if writeErr := os.WriteFile(filepath.Join(audioDir, filename), data, 0o644); writeErr != nil {
+						slog.Warn("failed to write audio", "turn", turn.ID, "err", writeErr)
+						continue
+					}
+					turn.AudioFile = "audio/" + filename
+				}
+			}
+			slog.Info("tts generation complete", "job", jobID, "course", courseID)
+		}
+	}
+
+	// Step 4: Save course
 	if err := g.courses.Create(ctx, course); err != nil {
 		g.updateJob(jobID, "failed", 0, "", "save course: "+err.Error())
 		return

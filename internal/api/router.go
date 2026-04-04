@@ -14,16 +14,17 @@ import (
 
 // RouterConfig holds all dependencies needed to construct the API router.
 type RouterConfig struct {
-	JWTSecret  string
-	Users      store.UserStorer
-	Courses    store.CourseStorer
-	Progress   store.ProgressStorer
-	Audit      store.AuditStorer
-	CoursesDir string
-	AccessTTL  time.Duration
-	RefreshTTL time.Duration
-	BcryptCost int
-	Gen        *generator.Generator
+	JWTSecret   string
+	Users       store.UserStorer
+	Courses     store.CourseStorer
+	Progress    store.ProgressStorer
+	Audit       store.AuditStorer
+	CoursesDir  string
+	AccessTTL   time.Duration
+	RefreshTTL  time.Duration
+	BcryptCost  int
+	Gen         *generator.Generator
+	Transcriber Transcriber
 }
 
 // NewRouter builds the chi router with all API routes mounted.
@@ -69,6 +70,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Put("/progress/{courseID}", courseH.UpsertProgress)
 
 			r.Get("/audio/{courseID}/{filename}", audioH.ServeAudio)
+
+			if cfg.Transcriber != nil {
+				speakH := NewSpeakingHandler(cfg.Transcriber)
+				r.Post("/speaking/evaluate", speakH.Evaluate)
+			}
 		})
 
 		// Admin endpoints
