@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -380,4 +381,243 @@ func TestAdminDeleteUser_VerifyRemoved(t *testing.T) {
 	rec = httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+// --- Mock-based error path tests ---
+
+func TestAdminListUsers_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{listFn: func(_ context.Context) ([]models.User, error) {
+			return nil, errors.New("db down")
+		}},
+		&mockCourseStore{}, &mockAuditStore{}, 4,
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/users", nil)
+	rec := httptest.NewRecorder()
+	h.ListUsers(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	assert.Contains(t, env.Error, "failed to list users")
+}
+
+func TestAdminGetUser_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{getByIDFn: func(_ context.Context, _ string) (models.User, error) {
+			return models.User{}, errors.New("disk error")
+		}},
+		&mockCourseStore{}, &mockAuditStore{}, 4,
+	)
+
+	r := chi.NewRouter()
+	r.Get("/api/admin/users/{id}", h.GetUser)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/users/u1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestAdminUpdateUser_StoreGetError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{getByIDFn: func(_ context.Context, _ string) (models.User, error) {
+			return models.User{}, errors.New("disk error")
+		}},
+		&mockCourseStore{}, &mockAuditStore{}, 4,
+	)
+
+	r := chi.NewRouter()
+	r.Patch("/api/admin/users/{id}", h.UpdateUser)
+
+	body := `{"username":"new"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/users/u1", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestAdminUpdateUser_StoreUpdateConflict(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{
+			getByIDFn: func(_ context.Context, _ string) (models.User, error) {
+				return models.User{ID: "u1", Username: "old"}, nil
+			},
+			updateFn: func(_ context.Context, _ models.User) error {
+				return store.ErrConflict
+			},
+		},
+		&mockCourseStore{}, &mockAuditStore{}, 4,
+	)
+
+	r := chi.NewRouter()
+	r.Patch("/api/admin/users/{id}", h.UpdateUser)
+
+	body := `{"email":"dup@test.com"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/users/u1", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	assert.Contains(t, env.Error, "email already taken")
+}
+
+func TestAdminUpdateUser_StoreUpdateError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{
+			getByIDFn: func(_ context.Context, _ string) (models.User, error) {
+				return models.User{ID: "u1", Username: "old"}, nil
+			},
+			updateFn: func(_ context.Context, _ models.User) error {
+				return errors.New("write fail")
+			},
+		},
+		&mockCourseStore{}, &mockAuditStore{}, 4,
+	)
+
+	r := chi.NewRouter()
+	r.Patch("/api/admin/users/{id}", h.UpdateUser)
+
+	body := `{"username":"new"}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/users/u1", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestAdminDeleteUser_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{deleteFn: func(_ context.Context, _ string) error {
+			return errors.New("disk error")
+		}},
+		&mockCourseStore{}, &mockAuditStore{}, 4,
+	)
+
+	r := chi.NewRouter()
+	r.Delete("/api/admin/users/{id}", h.DeleteUser)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/users/u1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestAdminListCourses_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{},
+		&mockCourseStore{listFn: func(_ context.Context) ([]models.Course, error) {
+			return nil, errors.New("db down")
+		}},
+		&mockAuditStore{}, 4,
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/courses", nil)
+	rec := httptest.NewRecorder()
+	h.ListCourses(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	assert.Contains(t, env.Error, "failed to list courses")
+}
+
+func TestAdminDeleteCourse_NotFound(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{},
+		&mockCourseStore{deleteFn: func(_ context.Context, _ string) error {
+			return store.ErrNotFound
+		}},
+		&mockAuditStore{}, 4,
+	)
+
+	r := chi.NewRouter()
+	r.Delete("/api/admin/courses/{id}", h.DeleteCourse)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/courses/nope", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestAdminDeleteCourse_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{},
+		&mockCourseStore{deleteFn: func(_ context.Context, _ string) error {
+			return errors.New("disk error")
+		}},
+		&mockAuditStore{}, 4,
+	)
+
+	r := chi.NewRouter()
+	r.Delete("/api/admin/courses/{id}", h.DeleteCourse)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/courses/c1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestAdminGetAudit_InvalidDate(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(&mockUserStore{}, &mockCourseStore{}, &mockAuditStore{}, 4)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/audit?date=not-a-date", nil)
+	rec := httptest.NewRecorder()
+	h.GetAudit(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	assert.Contains(t, env.Error, "invalid date format")
+}
+
+func TestAdminGetAudit_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{}, &mockCourseStore{},
+		&mockAuditStore{listByDateFn: func(_ context.Context, _ time.Time) ([]models.AuditEntry, error) {
+			return nil, errors.New("read fail")
+		}}, 4,
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/audit?date=2024-01-01", nil)
+	rec := httptest.NewRecorder()
+	h.GetAudit(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestAdminCreateUser_StoreCreateError(t *testing.T) {
+	t.Parallel()
+	h := NewAdminHandler(
+		&mockUserStore{createFn: func(_ context.Context, _ models.User) error {
+			return errors.New("disk full")
+		}},
+		&mockCourseStore{}, &mockAuditStore{}, 4,
+	)
+
+	body := `{"username":"newuser","password":"longpassword"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.CreateUser(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }

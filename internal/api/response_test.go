@@ -85,3 +85,56 @@ func TestReadJSON_UnknownField(t *testing.T) {
 	err := readJSON(r, &p)
 	assert.Error(t, err)
 }
+
+func TestWriteJSON_DifferentStatusCodes(t *testing.T) {
+	t.Parallel()
+
+	for _, code := range []int{http.StatusCreated, http.StatusAccepted, http.StatusNoContent} {
+		rec := httptest.NewRecorder()
+		writeJSON(rec, code, map[string]string{"ok": "true"})
+		assert.Equal(t, code, rec.Code)
+	}
+}
+
+func TestWriteError_DifferentStatusCodes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		code int
+		msg  string
+	}{
+		{http.StatusBadRequest, "bad request"},
+		{http.StatusUnauthorized, "unauthorized"},
+		{http.StatusForbidden, "forbidden"},
+		{http.StatusNotFound, "not found"},
+		{http.StatusConflict, "conflict"},
+		{http.StatusInternalServerError, "server error"},
+		{http.StatusTooManyRequests, "too many requests"},
+	}
+
+	for _, tc := range cases {
+		rec := httptest.NewRecorder()
+		writeError(rec, tc.code, tc.msg)
+
+		assert.Equal(t, tc.code, rec.Code)
+		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+
+		var env envelope
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+		assert.Equal(t, tc.msg, env.Error)
+		assert.Nil(t, env.Data)
+	}
+}
+
+func TestReadJSON_EmptyBody(t *testing.T) {
+	t.Parallel()
+
+	type payload struct {
+		Name string `json:"name"`
+	}
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+
+	var p payload
+	err := readJSON(r, &p)
+	assert.Error(t, err)
+}

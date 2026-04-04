@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -301,4 +302,229 @@ func TestServeAudio_PathTraversal(t *testing.T) {
 
 	// Should not return 200
 	assert.NotEqual(t, http.StatusOK, rec.Code)
+}
+
+func TestServeAudio_PathTraversalInFilename(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	h := NewAudioHandler(dir)
+
+	r := chi.NewRouter()
+	r.Get("/api/audio/{courseID}/{filename}", h.ServeAudio)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/audio/course1/..%2F..%2Fetc%2Fpasswd", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+// --- Mock-based error path tests for courses ---
+
+func TestListCourses_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{listFn: func(_ context.Context) ([]models.Course, error) {
+			return nil, errors.New("db down")
+		}},
+		&mockProgressStore{},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/courses", nil)
+	rec := httptest.NewRecorder()
+	h.ListCourses(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	var env envelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
+	assert.Contains(t, env.Error, "failed to list courses")
+}
+
+func TestGetCourse_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{getByIDFn: func(_ context.Context, _ string) (models.Course, error) {
+			return models.Course{}, errors.New("disk error")
+		}},
+		&mockProgressStore{},
+	)
+
+	r := chi.NewRouter()
+	r.Get("/api/courses/{id}", h.GetCourse)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/courses/c1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestGetLesson_CourseStoreError(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{getByIDFn: func(_ context.Context, _ string) (models.Course, error) {
+			return models.Course{}, errors.New("disk error")
+		}},
+		&mockProgressStore{},
+	)
+
+	r := chi.NewRouter()
+	r.Get("/api/courses/{id}/lessons/{seq}", h.GetLesson)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/courses/c1/lessons/1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestGetLesson_CourseNotFound(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{getByIDFn: func(_ context.Context, _ string) (models.Course, error) {
+			return models.Course{}, store.ErrNotFound
+		}},
+		&mockProgressStore{},
+	)
+
+	r := chi.NewRouter()
+	r.Get("/api/courses/{id}/lessons/{seq}", h.GetLesson)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/courses/nope/lessons/1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestGetProgress_Unauthorized(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(&mockCourseStore{}, &mockProgressStore{})
+
+	// No auth context — call handler directly (no middleware)
+	req := httptest.NewRequest(http.MethodGet, "/api/progress", nil)
+	rec := httptest.NewRecorder()
+	h.GetProgress(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestGetProgress_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{},
+		&mockProgressStore{listByUserFn: func(_ context.Context, _ string) ([]models.CourseProgress, error) {
+			return nil, errors.New("db down")
+		}},
+	)
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Get("/api/progress", h.GetProgress)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/progress", nil)
+	testutil.WithJWT(t, req, testSecret, "user1", false)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestGetCourseProgress_StoreError(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{},
+		&mockProgressStore{getFn: func(_ context.Context, _, _ string) (models.CourseProgress, error) {
+			return models.CourseProgress{}, errors.New("disk error")
+		}},
+	)
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Get("/api/progress/{courseID}", h.GetCourseProgress)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/progress/c1", nil)
+	testutil.WithJWT(t, req, testSecret, "user1", false)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestUpsertProgress_Unauthorized(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(&mockCourseStore{}, &mockProgressStore{})
+
+	body := `{"current_lesson":1}`
+	req := httptest.NewRequest(http.MethodPut, "/api/progress/c1", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.UpsertProgress(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestUpsertProgress_InvalidBody(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(&mockCourseStore{}, &mockProgressStore{})
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Put("/api/progress/{courseID}", h.UpsertProgress)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/progress/c1", strings.NewReader("not json"))
+	testutil.WithJWT(t, req, testSecret, "user1", false)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestUpsertProgress_StoreGetError(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{},
+		&mockProgressStore{getFn: func(_ context.Context, _, _ string) (models.CourseProgress, error) {
+			return models.CourseProgress{}, errors.New("disk error")
+		}},
+	)
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Put("/api/progress/{courseID}", h.UpsertProgress)
+
+	body := `{"current_lesson":3}`
+	req := httptest.NewRequest(http.MethodPut, "/api/progress/c1", strings.NewReader(body))
+	testutil.WithJWT(t, req, testSecret, "user1", false)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestUpsertProgress_StoreUpsertError(t *testing.T) {
+	t.Parallel()
+	h := NewCourseHandler(
+		&mockCourseStore{},
+		&mockProgressStore{
+			getFn: func(_ context.Context, _, _ string) (models.CourseProgress, error) {
+				return models.CourseProgress{}, store.ErrNotFound
+			},
+			upsertFn: func(_ context.Context, _ models.CourseProgress) error {
+				return errors.New("write fail")
+			},
+		},
+	)
+
+	r := chi.NewRouter()
+	r.Use(auth.RequireAuth(testSecret))
+	r.Put("/api/progress/{courseID}", h.UpsertProgress)
+
+	body := `{"current_lesson":3}`
+	req := httptest.NewRequest(http.MethodPut, "/api/progress/c1", strings.NewReader(body))
+	testutil.WithJWT(t, req, testSecret, "user1", false)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
