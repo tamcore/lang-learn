@@ -61,7 +61,7 @@ func (c *LLMClient) Complete(ctx context.Context, prompt string) (string, error)
 	}
 
 	var lastErr error
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := range 5 {
 		if attempt > 0 {
 			backoff := time.Duration(1<<uint(attempt)) * time.Second
 			select {

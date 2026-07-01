@@ -92,7 +92,7 @@ func TestRateLimit_Middleware_BlocksAfterLimit(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.RemoteAddr = "10.0.0.2:12345"
 		rec := httptest.NewRecorder()

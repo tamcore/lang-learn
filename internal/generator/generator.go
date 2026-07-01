@@ -89,7 +89,7 @@ func (g *Generator) run(jobID string, req GenerateRequest) {
 
 	var titles []string
 	var err error
-	for attempt := 0; attempt < 3; attempt++ {
+	for range 3 {
 		resp, llmErr := g.llm.Complete(ctx, outlinePrompt)
 		if llmErr != nil {
 			err = llmErr
@@ -158,7 +158,7 @@ func (g *Generator) run(jobID string, req GenerateRequest) {
 			DelayAfterMs int    `json:"delay_after_ms"`
 		}
 
-		for attempt := 0; attempt < 3; attempt++ {
+		for range 3 {
 			resp, llmErr := g.llm.Complete(ctx, turnsPrompt)
 			if llmErr != nil {
 				err = llmErr
