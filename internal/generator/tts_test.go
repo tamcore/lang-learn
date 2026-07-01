@@ -120,7 +120,7 @@ func TestSynthesizeBatch_Success(t *testing.T) {
 	c := NewTTSClient("key", "", "", srv.URL)
 	results := c.SynthesizeBatch(context.Background(), []string{"one", "two", "three"})
 	assert.Len(t, results, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		assert.Equal(t, "RIFF", string(results[i][:4]))
 		assert.Equal(t, []byte("audio-data"), results[i][44:])
 	}

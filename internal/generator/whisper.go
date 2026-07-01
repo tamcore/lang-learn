@@ -42,8 +42,8 @@ type whisperChatRequest struct {
 }
 
 type whisperChatMsg struct {
-	Role    string        `json:"role"`
-	Content []interface{} `json:"content"`
+	Role    string `json:"role"`
+	Content []any  `json:"content"`
 }
 
 type whisperTextContent struct {
@@ -78,7 +78,7 @@ func (c *WhisperClient) Transcribe(ctx context.Context, audio []byte) (string, e
 		Messages: []whisperChatMsg{
 			{
 				Role: "user",
-				Content: []interface{}{
+				Content: []any{
 					whisperTextContent{Type: "text", Text: "Transcribe the following audio exactly. Return only the transcribed text, nothing else."},
 					whisperAudioContent{
 						Type: "input_audio",

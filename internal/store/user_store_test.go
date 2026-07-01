@@ -454,7 +454,6 @@ func TestFileUserStore_Concurrent_CreateAndRead(t *testing.T) {
 	// Create all users concurrently
 	errCh := make(chan error, n)
 	for _, u := range users {
-		u := u
 		go func() {
 			errCh <- s.Create(context.Background(), u)
 		}()
